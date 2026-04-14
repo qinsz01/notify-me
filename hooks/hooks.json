@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/dist/cli.js \"Claude Code finished responding\""
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/dist/cli.js \"Task completed\""
           }
         ]
       }
