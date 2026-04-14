@@ -1,7 +1,7 @@
 import { exec } from "node:child_process";
 import { promisify } from "node:util";
 import { existsSync } from "node:fs";
-import type { Notifier, NotifyOptions } from "./types.js";
+import type { Notifier, NotifyOptions, NotifyResult } from "./types.js";
 
 const execAsync = promisify(exec);
 
@@ -19,17 +19,22 @@ export class SoundNotifier implements Notifier {
     this._execAsync = execFn ?? ((cmd, opts) => execAsync(cmd, opts));
   }
 
-  async send(_message: string, _options?: NotifyOptions): Promise<void> {
+  async send(_message: string, _options?: NotifyOptions): Promise<NotifyResult> {
     // 1. Terminal bell — works over SSH if terminal supports it
     process.stdout.write("\x07");
 
     // 2. Try to play an audio file on the server (audible if on local desktop)
-    await this.playSound();
+    const audioResult = await this.playSound();
+
+    if (audioResult) {
+      return { channel: this.name, success: true, message: `terminal bell + audio (${audioResult})` };
+    }
+    return { channel: this.name, success: true, message: "terminal bell" };
   }
 
-  private async playSound(): Promise<void> {
+  private async playSound(): Promise<string | null> {
     const soundFile = SOUND_FILES.find((f) => existsSync(f));
-    if (!soundFile) return;
+    if (!soundFile) return null;
 
     try {
       if (soundFile.endsWith(".oga")) {
@@ -37,8 +42,9 @@ export class SoundNotifier implements Notifier {
       } else {
         await this._execAsync(`aplay "${soundFile}"`, { timeout: 3000 });
       }
+      return soundFile.split("/").pop() ?? "audio";
     } catch {
-      // Audio playback failed silently (no sound device, PulseAudio not running, etc.)
+      return null;
     }
   }
 }

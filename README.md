@@ -70,6 +70,31 @@ notify-me --test
 notify-me --init
 ```
 
+### Output
+
+Every invocation prints per-channel results so you know exactly what happened:
+
+```
+[notify-me] ✓ sound: terminal bell
+[notify-me] ✓ telegram: sent to chat 123456
+[notify-me] ✓ slack: sent to Slack webhook
+[notify-me] Done: 3 sent.
+```
+
+If a channel fails, it shows the error:
+
+```
+[notify-me] ✓ sound: terminal bell
+[notify-me] ✗ telegram: HTTP 401: Unauthorized
+[notify-me] Done: 1 sent, 1 failed.
+```
+
+When no channels are configured, you'll see:
+
+```
+[notify-me] No channels enabled or configured.
+```
+
 ## Configuration
 
 Edit `~/.notify-me.yaml`:

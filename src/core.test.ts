@@ -6,7 +6,7 @@ import type { Config } from "./notifiers/types.js";
 vi.mock("./notifiers/desktop.js", () => ({
   DesktopNotifier: vi.fn().mockImplementation(() => ({
     name: "desktop",
-    send: vi.fn().mockResolvedValue(undefined),
+    send: vi.fn().mockResolvedValue({ channel: "desktop", success: true, message: "desktop notification sent" }),
   })),
 }));
 
@@ -35,15 +35,21 @@ const baseConfig: Config = {
 
 describe("dispatch", () => {
   let writeSpy: ReturnType<typeof vi.spyOn>;
+  let logSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     writeSpy = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+    logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
   });
 
-  it("sends to desktop + sound in local env", async () => {
-    await dispatch("Hello", baseConfig, "local");
+  it("sends to desktop + sound in local env and returns results", async () => {
+    const results = await dispatch("Hello", baseConfig, "local");
+
+    expect(results.length).toBeGreaterThanOrEqual(1);
     // Sound always fires (writes bell char)
     expect(writeSpy).toHaveBeenCalledWith("\x07");
+    // Should have logged per-channel results
+    expect(logSpy).toHaveBeenCalled();
   });
 
   it("skips desktop in ssh env and uses fallback", async () => {
@@ -65,13 +71,17 @@ describe("dispatch", () => {
       },
     };
 
-    await dispatch("Test", config, "local");
+    const results = await dispatch("Test", config, "local");
     expect(fetchSpy).toHaveBeenCalled();
+
+    const tgResult = results.find((r) => r.channel === "telegram");
+    expect(tgResult).toBeDefined();
+    expect(tgResult!.success).toBe(true);
 
     fetchSpy.mockRestore();
   });
 
-  it("continues if one notifier fails", async () => {
+  it("continues if one notifier fails and reports failure", async () => {
     const config: Config = {
       ...baseConfig,
       channels: {
@@ -81,7 +91,25 @@ describe("dispatch", () => {
     };
 
     // Should not throw
-    await expect(dispatch("Test", config, "local")).resolves.toBeUndefined();
+    const results = await dispatch("Test", config, "local");
+    expect(results).toBeDefined();
     expect(writeSpy).toHaveBeenCalledWith("\x07");
+    // Should still have sound result
+    const soundResult = results.find((r) => r.channel === "sound");
+    expect(soundResult).toBeDefined();
+  });
+
+  it("returns empty results when no channels enabled", async () => {
+    const config: Config = {
+      ...baseConfig,
+      channels: {
+        ...baseConfig.channels,
+        desktop: { enabled: false },
+        sound: { enabled: false, file: null },
+      },
+    };
+
+    const results = await dispatch("Test", config, "local");
+    expect(results).toEqual([]);
   });
 });

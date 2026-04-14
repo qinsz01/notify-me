@@ -70,6 +70,31 @@ notify-me --test
 notify-me --init
 ```
 
+### 输出反馈
+
+每次调用都会打印各渠道的发送结果，让你清楚了解通知状态：
+
+```
+[notify-me] ✓ sound: terminal bell
+[notify-me] ✓ telegram: sent to chat 123456
+[notify-me] ✓ slack: sent to Slack webhook
+[notify-me] Done: 3 sent.
+```
+
+如果某个渠道发送失败，会显示具体错误信息：
+
+```
+[notify-me] ✓ sound: terminal bell
+[notify-me] ✗ telegram: HTTP 401: Unauthorized
+[notify-me] Done: 1 sent, 1 failed.
+```
+
+当没有配置任何渠道时，会提示：
+
+```
+[notify-me] No channels enabled or configured.
+```
+
 ## 配置
 
 编辑 `~/.notify-me.yaml`：

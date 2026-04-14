@@ -4,9 +4,15 @@ export interface NotifyOptions {
   urgency?: "low" | "normal" | "critical";
 }
 
+export interface NotifyResult {
+  channel: string;
+  success: boolean;
+  message: string;
+}
+
 export interface Notifier {
   name: string;
-  send(message: string, options?: NotifyOptions): Promise<void>;
+  send(message: string, options?: NotifyOptions): Promise<NotifyResult>;
 }
 
 export interface DesktopConfig {

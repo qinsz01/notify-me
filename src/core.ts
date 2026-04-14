@@ -1,4 +1,4 @@
-import type { Config, Environment, Notifier } from "./notifiers/types.js";
+import type { Config, Environment, Notifier, NotifyResult } from "./notifiers/types.js";
 import { DesktopNotifier } from "./notifiers/desktop.js";
 import { SoundNotifier } from "./notifiers/sound.js";
 import { NtfyNotifier } from "./notifiers/ntfy.js";
@@ -50,16 +50,34 @@ export async function dispatch(
   message: string,
   config: Config,
   env: Environment
-): Promise<void> {
+): Promise<NotifyResult[]> {
   const notifiers = buildNotifiers(config, env);
   const title = config.defaults.title;
 
-  await Promise.allSettled(
-    notifiers.map((n) =>
-      n.send(message, { title }).catch((err) => {
-        console.warn(`[notify-me] ${n.name} failed: ${err instanceof Error ? err.message : err}`);
-        throw err;
-      })
-    )
+  if (notifiers.length === 0) {
+    console.log("[notify-me] No channels enabled or configured.");
+    return [];
+  }
+
+  const settled = await Promise.allSettled(
+    notifiers.map((n) => n.send(message, { title }))
   );
+
+  const results: NotifyResult[] = settled.map((s, i) => {
+    if (s.status === "fulfilled") return s.value;
+    // Should not happen since notifiers catch internally, but handle anyway
+    return { channel: notifiers[i].name, success: false, message: s.reason?.message ?? String(s.reason) };
+  });
+
+  // Print per-channel results
+  for (const r of results) {
+    const icon = r.success ? "✓" : "✗";
+    console.log(`[notify-me] ${icon} ${r.channel}: ${r.message}`);
+  }
+
+  const ok = results.filter((r) => r.success).length;
+  const fail = results.filter((r) => !r.success).length;
+  console.log(`[notify-me] Done: ${ok} sent${fail > 0 ? `, ${fail} failed` : ""}.`);
+
+  return results;
 }

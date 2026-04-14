@@ -34,7 +34,6 @@ program
       console.log("[notify-me] Testing all enabled channels...");
       const env = detectEnvironment();
       await dispatch(`Test notification from notify-me (${env})`, config, env);
-      console.log("[notify-me] Done.");
       return;
     }
 
