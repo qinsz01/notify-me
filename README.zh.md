@@ -140,8 +140,8 @@ defaults:
 
 通过 SSH 连接时，桌面通知无法传到你的本地电脑。notify-me 使用逐级降级策略：
 
-1. **终端响铃 (`\a`)** — 零配置，但需要你的本地终端支持
-2. **ntfy.sh** — 推送通知到手机/浏览器，只需配置一个 URL
+1. **终端响铃 (`\a`)** — 零配置，但在 tmux 下可能不生效
+2. **ntfy.sh** — 推送通知到手机/浏览器，只需配置一个 URL（推荐）
 
 ### 开启 SSH 终端响铃
 
@@ -156,7 +156,9 @@ defaults:
 | **PuTTY** | Configuration → Terminal → Bell → 设为 "Play default sound" |
 | **tmux** | 在 `~/.tmux.conf` 中添加：`set -g bell-action any` |
 
-设置完成后，用这个命令测试：`printf '\a'` — 应该能听到"嘟"的一声。
+> **注意：** 通过 tmux + SSH 使用终端响铃不可靠。如果你使用 tmux，强烈建议配置 ntfy.sh（见下方）而不是依赖终端响铃。
+
+设置完成后，用这个命令测试：`printf '\a'` — 应该能听到"嘟"的一声。如果在 tmux 中，先脱离（`Ctrl+B` 然后 `D`）再测试。
 
 ### 配置 ntfy.sh（SSH 推荐方案）
 

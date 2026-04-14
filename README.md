@@ -140,8 +140,8 @@ Environment variables take precedence over the YAML config file.
 
 When you're connected via SSH, desktop notifications won't reach your local machine. notify-me uses a progressive fallback:
 
-1. **Terminal bell (`\a`)** — zero config, but your local terminal must support it
-2. **ntfy.sh** — push notification to your phone/browser, one URL to configure
+1. **Terminal bell (`\a`)** — zero config, but may not work through tmux
+2. **ntfy.sh** — push notification to your phone/browser, one URL to configure (recommended)
 
 ### Enabling Terminal Bell Over SSH
 
@@ -156,7 +156,9 @@ Your local terminal decides whether `\a` produces a sound. Here's how to enable 
 | **PuTTY** | Configuration → Terminal → Bell → set to "Play default sound" |
 | **tmux** | Add to `~/.tmux.conf`: `set -g bell-action any` |
 
-After enabling, test with: `printf '\a'` — you should hear a beep.
+> **Note:** Terminal bell through tmux over SSH is unreliable. If you're using tmux, we strongly recommend setting up ntfy.sh (see below) instead of relying on terminal bell.
+
+After enabling, test with: `printf '\a'` — you should hear a beep. If you're in tmux, detach first (`Ctrl+B` then `D`) and test again.
 
 ### Setting Up ntfy.sh (Recommended for SSH)
 
