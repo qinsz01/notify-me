@@ -4,11 +4,12 @@ import { writeFileSync, existsSync, readFileSync } from "node:fs";
 import { loadConfig } from "./config.js";
 import { detectEnvironment } from "./env.js";
 import { dispatch } from "./core.js";
+import { handleHook } from "./hook.js";
 
 const program = new Command();
 
 program
-  .name("notify-me")
+  .name("ai-ding")
   .description("Cross-platform notifications for AI coding assistants")
   .version("1.0.0")
   .argument("[message]", "notification message", "Task completed")
@@ -26,7 +27,8 @@ program
     }
 
     if (opts.hook) {
-      await handleHook();
+      const input = await readStdin();
+      await handleHook(input);
       return;
     }
 
@@ -40,82 +42,15 @@ program
     const channel = typeof opts.channel === "string" ? opts.channel : undefined;
 
     if (opts.test) {
-      console.log("[notify-me] Testing all enabled channels...");
+      console.log("[ai-ding] Testing all enabled channels...");
       const env = detectEnvironment();
-      await dispatch(`Test notification from notify-me (${env})`, config, env, { title, channel });
+      await dispatch(`Test notification from ai-ding (${env})`, config, env, { title, channel });
       return;
     }
 
     const env = detectEnvironment();
     await dispatch(message, config, env, { title, channel });
   });
-
-async function handleHook(): Promise<void> {
-  const input = await readStdin();
-  if (!input) return;
-
-  let data: Record<string, unknown>;
-  try {
-    data = JSON.parse(input);
-  } catch {
-    console.warn("[notify-me] --hook: failed to parse stdin JSON");
-    return;
-  }
-
-  // Skip subagent events — only notify for user-facing main agent actions
-  if (data.agent_id) return;
-
-  const event = data.hook_event_name as string | undefined;
-  const config = loadConfig();
-  const env = detectEnvironment();
-
-  switch (event) {
-    case "Stop": {
-      const raw = data.last_assistant_message;
-      const lastMsg = truncate(typeof raw === "string" && raw ? raw : "Task completed", 200);
-      await dispatch(lastMsg, config, env, { title: "Claude Code" });
-      break;
-    }
-    case "Notification": {
-      const msg = String(data.message ?? "");
-      const notifType = String(data.notification_type ?? "");
-      if (notifType === "idle_prompt" || notifType === "permission_prompt" ||
-          msg.includes("idle") || msg.includes("permission")) {
-        await dispatch("Claude is waiting for your input", config, env, { title: "Needs Attention" });
-      }
-      break;
-    }
-    case "PreToolUse": {
-      const toolName = String(data.tool_name ?? "");
-      if (toolName === "AskUserQuestion") {
-        const questions = extractQuestions(data.tool_input);
-        await dispatch(questions, config, env, { title: "Question" });
-      }
-      break;
-    }
-    case "PermissionRequest": {
-      const toolName = String(data.tool_name ?? "");
-      await dispatch(`Permission needed: ${toolName || "tool"}`, config, env, { title: "Needs Attention" });
-      break;
-    }
-  }
-}
-
-function extractQuestions(toolInput: unknown): string {
-  if (!toolInput || typeof toolInput !== "object") return "Claude has a question";
-  const input = toolInput as Record<string, unknown>;
-  const questions = input.questions;
-  if (!Array.isArray(questions) || questions.length === 0) return "Claude has a question";
-  const texts = questions
-    .map((q: Record<string, unknown>) => String(q.question ?? ""))
-    .filter(Boolean);
-  return texts.length > 0 ? truncate(texts.join("; "), 200) : "Claude has a question";
-}
-
-function truncate(s: string, max: number): string {
-  if (s.length <= max) return s;
-  return s.slice(0, max - 3) + "...";
-}
 
 function readStdin(): Promise<string> {
   return new Promise((resolve) => {
@@ -136,7 +71,7 @@ function readStdin(): Promise<string> {
 }
 
 function initConfig(): void {
-  const dest = resolve(process.env.HOME || "~", ".notify-me.yaml");
+  const dest = resolve(process.env.HOME || "~", ".ai-ding.yaml");
   if (existsSync(dest)) {
     console.log(`Config already exists at ${dest}`);
     return;
@@ -195,7 +130,7 @@ remote:
 
 defaults:
   message: "Task completed"
-  title: "notify-me"
+  title: "ai-ding"
 `;
   }
 
