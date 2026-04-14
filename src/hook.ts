@@ -49,6 +49,9 @@ export async function handleHook(input: string): Promise<void> {
       if (notifType === "idle_prompt" || notifType === "permission_prompt" ||
           msg.includes("idle") || msg.includes("permission")) {
         await dispatch("Claude is waiting for your input", config, env, { title: "Needs Attention" });
+      } else {
+        // Catch-all: forward any other notification (API errors, etc.)
+        await dispatch(truncate(msg || notifType || "Unknown notification", 200), config, env, { title: "Claude Code" });
       }
       break;
     }

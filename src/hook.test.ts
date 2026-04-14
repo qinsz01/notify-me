@@ -111,13 +111,22 @@ describe("handleHook", () => {
     expect(mockDispatch).toHaveBeenCalledWith("Claude is waiting for your input", expect.anything(), expect.anything(), { title: "Needs Attention" });
   });
 
-  it("ignores non-idle/permission Notification", async () => {
+  it("forwards non-idle/permission Notification (e.g. API errors)", async () => {
     await handleHook(JSON.stringify({
       hook_event_name: "Notification",
       notification_type: "other",
-      message: "something else",
+      message: "API Error: 400 Bad Request",
     }));
-    expect(mockDispatch).not.toHaveBeenCalled();
+    expect(mockDispatch).toHaveBeenCalledWith("API Error: 400 Bad Request", expect.anything(), expect.anything(), { title: "Claude Code" });
+  });
+
+  it("forwards Notification with empty message using notification_type as fallback", async () => {
+    await handleHook(JSON.stringify({
+      hook_event_name: "Notification",
+      notification_type: "error",
+      message: "",
+    }));
+    expect(mockDispatch).toHaveBeenCalledWith("error", expect.anything(), expect.anything(), { title: "Claude Code" });
   });
 
   it("handles PreToolUse AskUserQuestion", async () => {
