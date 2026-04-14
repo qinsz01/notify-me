@@ -43,6 +43,12 @@ export async function handleHook(input: string): Promise<void> {
       await dispatch(lastMsg, config, env, { title: "Claude Code" });
       break;
     }
+    case "StopFailure": {
+      const error = String(data.error ?? "unknown error");
+      const details = data.error_details ? `: ${data.error_details}` : "";
+      await dispatch(truncate(`API Error: ${error}${details}`, 200), config, env, { title: "Claude Code Error" });
+      break;
+    }
     case "Notification": {
       const msg = String(data.message ?? "");
       const notifType = String(data.notification_type ?? "");
@@ -60,6 +66,8 @@ export async function handleHook(input: string): Promise<void> {
       if (toolName === "AskUserQuestion") {
         const questions = extractQuestions(data.tool_input);
         await dispatch(questions, config, env, { title: "Question" });
+      } else if (toolName === "ExitPlanMode") {
+        await dispatch("Plan ready for your approval", config, env, { title: "Plan Review" });
       }
       break;
     }

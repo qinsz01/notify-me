@@ -147,11 +147,37 @@ describe("handleHook", () => {
     expect(mockDispatch).not.toHaveBeenCalled();
   });
 
+  it("handles ExitPlanMode (plan approval)", async () => {
+    await handleHook(JSON.stringify({
+      hook_event_name: "PreToolUse",
+      tool_name: "ExitPlanMode",
+      tool_input: {},
+    }));
+    expect(mockDispatch).toHaveBeenCalledWith("Plan ready for your approval", expect.anything(), expect.anything(), { title: "Plan Review" });
+  });
+
   it("handles PermissionRequest event", async () => {
     await handleHook(JSON.stringify({
       hook_event_name: "PermissionRequest",
       tool_name: "Bash",
     }));
     expect(mockDispatch).toHaveBeenCalledWith("Permission needed: Bash", expect.anything(), expect.anything(), { title: "Needs Attention" });
+  });
+
+  it("handles StopFailure (API error)", async () => {
+    await handleHook(JSON.stringify({
+      hook_event_name: "StopFailure",
+      error: "rate_limit",
+      error_details: "429 Too Many Requests",
+    }));
+    expect(mockDispatch).toHaveBeenCalledWith("API Error: rate_limit: 429 Too Many Requests", expect.anything(), expect.anything(), { title: "Claude Code Error" });
+  });
+
+  it("handles StopFailure without details", async () => {
+    await handleHook(JSON.stringify({
+      hook_event_name: "StopFailure",
+      error: "server_error",
+    }));
+    expect(mockDispatch).toHaveBeenCalledWith("API Error: server_error", expect.anything(), expect.anything(), { title: "Claude Code Error" });
   });
 });
