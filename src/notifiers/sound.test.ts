@@ -1,20 +1,27 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { SoundNotifier } from "./sound.js";
+
+const mockExec = vi.fn().mockResolvedValue({ stdout: "", stderr: "" });
 
 describe("SoundNotifier", () => {
   let writeSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     writeSpy = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+    mockExec.mockClear();
+  });
+
+  afterEach(() => {
+    writeSpy.mockRestore();
   });
 
   it("has name 'sound'", () => {
-    const notifier = new SoundNotifier();
+    const notifier = new SoundNotifier(null, mockExec);
     expect(notifier.name).toBe("sound");
   });
 
   it("writes bell character to stdout and returns success", async () => {
-    const notifier = new SoundNotifier();
+    const notifier = new SoundNotifier(null, mockExec);
     const result = await notifier.send("test message");
 
     expect(result.channel).toBe("sound");
@@ -24,14 +31,13 @@ describe("SoundNotifier", () => {
   });
 
   it("writes bell character regardless of message content", async () => {
-    const notifier = new SoundNotifier();
+    const notifier = new SoundNotifier(null, mockExec);
     const result = await notifier.send("any message at all");
     expect(result.success).toBe(true);
     expect(writeSpy).toHaveBeenCalledWith("\x07");
   });
 
   it("attempts to play audio file and includes it in result", async () => {
-    const mockExec = vi.fn().mockResolvedValue({ stdout: "", stderr: "" });
     const notifier = new SoundNotifier(null, mockExec);
     const result = await notifier.send("test");
 

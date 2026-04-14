@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Cross-platform notifications for Claude Code and Codex CLI",
   "type": "module",
+  "repository": { "type": "git", "url": "git+https://github.com/qinsz01/notify-me.git" },
+  "homepage": "https://github.com/qinsz01/notify-me#readme",
+  "bugs": { "url": "https://github.com/qinsz01/notify-me/issues" },
   "bin": {
     "notify-me": "./dist/cli.js"
   },
@@ -34,7 +37,9 @@
     "skills",
     ".claude-plugin",
     ".codex-plugin",
-    "default-config.yaml"
+    "default-config.yaml",
+    "README.md",
+    "LICENSE"
   ],
   "license": "MIT"
 }

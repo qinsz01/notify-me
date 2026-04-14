@@ -6,6 +6,6 @@
     "name": "notify-me contributors"
   },
   "license": "MIT",
-  "keywords": ["notification", "alert", "telegram", "slack", "bark"],
+  "keywords": ["notification", "alert", "telegram", "slack", "bark", "sound", "email", "ssh"],
   "skills": "./skills/"
 }

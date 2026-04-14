@@ -36,7 +36,7 @@ export class TelegramNotifier implements Notifier {
         const body = await res.text().catch(() => "");
         return { channel: this.name, success: false, message: `HTTP ${res.status}: ${body}` };
       }
-      return { channel: this.name, success: true, message: `sent to chat ${this.chatId}` };
+      return { channel: this.name, success: true, message: `sent to chat ${this.chatId.slice(0, 4)}...` };
     } catch (err) {
       return { channel: this.name, success: false, message: err instanceof Error ? err.message : String(err) };
     } finally {

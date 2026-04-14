@@ -137,6 +137,7 @@ remote:
     - ntfy
 
 defaults:
+  message: "Task completed"
   title: "notify-me"
 ```
 

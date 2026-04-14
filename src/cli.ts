@@ -58,6 +58,7 @@ async function handleHook(): Promise<void> {
   try {
     data = JSON.parse(input);
   } catch {
+    console.warn("[notify-me] --hook: failed to parse stdin JSON");
     return;
   }
 
@@ -67,7 +68,8 @@ async function handleHook(): Promise<void> {
 
   switch (event) {
     case "Stop": {
-      const lastMsg = truncate(String(data.last_assistant_message ?? "Task completed"), 200);
+      const raw = data.last_assistant_message;
+      const lastMsg = truncate(typeof raw === "string" && raw ? raw : "Task completed", 200);
       await dispatch(lastMsg, config, env, { title: "Claude Code" });
       break;
     }
@@ -108,12 +110,18 @@ function truncate(s: string, max: number): string {
 function readStdin(): Promise<string> {
   return new Promise((resolve) => {
     let data = "";
+    let settled = false;
     process.stdin.setEncoding("utf-8");
+    const timer = setTimeout(() => {
+      if (!settled) { settled = true; process.stdin.destroy(); resolve(data); }
+    }, 3000);
     process.stdin.on("data", (chunk) => { data += chunk; });
-    process.stdin.on("end", () => resolve(data));
-    process.stdin.on("error", () => resolve(""));
-    // Timeout in case stdin hangs
-    setTimeout(() => { resolve(data); }, 3000);
+    process.stdin.on("end", () => {
+      if (!settled) { settled = true; clearTimeout(timer); resolve(data); }
+    });
+    process.stdin.on("error", () => {
+      if (!settled) { settled = true; clearTimeout(timer); resolve(""); }
+    });
   });
 }
 
