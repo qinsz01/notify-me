@@ -1,0 +1,12 @@
+{
+  "name": "notify-me",
+  "version": "1.0.0",
+  "description": "Cross-platform notifications for Claude Code — desktop, sound, Telegram, Bark, Slack, email, and more. Works over SSH with progressive fallback.",
+  "author": {
+    "name": "notify-me contributors"
+  },
+  "license": "MIT",
+  "keywords": ["notification", "alert", "telegram", "slack", "bark", "sound", "email", "ssh"],
+  "hooks": "./hooks/hooks.json",
+  "skills": "./skills/"
+}

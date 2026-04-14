@@ -1,0 +1,11 @@
+{
+  "name": "notify-me",
+  "version": "1.0.0",
+  "description": "Cross-platform notifications for Codex CLI — desktop, sound, Telegram, Bark, Slack, email, and more.",
+  "author": {
+    "name": "notify-me contributors"
+  },
+  "license": "MIT",
+  "keywords": ["notification", "alert", "telegram", "slack", "bark"],
+  "skills": "./skills/"
+}
