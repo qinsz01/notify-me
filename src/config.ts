@@ -57,6 +57,7 @@ const ENV_VAR_MAP: Record<string, string> = {
   AI_DING_SLACK_WEBHOOK_URL: "channels.slack.webhook_url",
   AI_DING_NTFY_URL: "channels.ntfy.url",
   AI_DING_EMAIL_SMTP_HOST: "channels.email.smtp_host",
+  AI_DING_EMAIL_SMTP_PORT: "channels.email.smtp_port",
   AI_DING_EMAIL_FROM: "channels.email.from",
   AI_DING_EMAIL_TO: "channels.email.to",
   AI_DING_EMAIL_USER: "channels.email.user",

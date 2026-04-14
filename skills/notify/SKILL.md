@@ -1,6 +1,6 @@
 ---
 name: notify
-description: Send a notification to the user via configured channels (desktop, sound, Telegram, Bark, Slack, email). Use when a long task completes or when you need the user's attention.
+description: Send a notification to the user via configured channels (desktop, sound, Telegram, Bark, Slack, ntfy, ServerChan, email). Use when a long task completes or when you need the user's attention.
 ---
 
 Send a notification to the user by running the CLI tool:

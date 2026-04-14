@@ -187,6 +187,7 @@ defaults:
 | `AI_DING_BARK_DEVICE_KEY` | `channels.bark.device_key` |
 | `AI_DING_SERVERCHAN_SENDKEY` | `channels.serverchan.sendkey` |
 | `AI_DING_EMAIL_SMTP_HOST` | `channels.email.smtp_host` |
+| `AI_DING_EMAIL_SMTP_PORT` | `channels.email.smtp_port` |
 | `AI_DING_EMAIL_FROM` | `channels.email.from` |
 | `AI_DING_EMAIL_TO` | `channels.email.to` |
 | `AI_DING_EMAIL_USER` | `channels.email.user` |

@@ -26,9 +26,6 @@
     "cli"
   ],
   "author": { "name": "qinsz01" },
-  "exports": {
-    ".": "./dist/cli.js"
-  },
   "bin": {
     "ai-ding": "./dist/cli.js"
   },
