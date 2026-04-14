@@ -30,15 +30,18 @@ program
     if (opts.noDesktop) config.channels.desktop.enabled = false;
     if (opts.noSound) config.channels.sound.enabled = false;
 
+    const title = typeof opts.title === "string" ? opts.title : undefined;
+    const channel = typeof opts.channel === "string" ? opts.channel : undefined;
+
     if (opts.test) {
       console.log("[notify-me] Testing all enabled channels...");
       const env = detectEnvironment();
-      await dispatch(`Test notification from notify-me (${env})`, config, env);
+      await dispatch(`Test notification from notify-me (${env})`, config, env, { title, channel });
       return;
     }
 
     const env = detectEnvironment();
-    await dispatch(message, config, env);
+    await dispatch(message, config, env, { title, channel });
   });
 
 function initConfig(): void {
@@ -48,7 +51,6 @@ function initConfig(): void {
     return;
   }
 
-  // Try to read the default config from the installed package location
   const possiblePaths = [
     resolve(import.meta.dirname ?? ".", "..", "default-config.yaml"),
     resolve(import.meta.dirname ?? ".", "default-config.yaml"),
@@ -63,7 +65,6 @@ function initConfig(): void {
   }
 
   if (!content) {
-    // Fallback inline config
     content = `channels:
   desktop:
     enabled: true

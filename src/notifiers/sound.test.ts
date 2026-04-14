@@ -2,35 +2,44 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { SoundNotifier } from "./sound.js";
 
 describe("SoundNotifier", () => {
-  let notifier: SoundNotifier;
   let writeSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
-    notifier = new SoundNotifier();
     writeSpy = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
   });
 
   it("has name 'sound'", () => {
+    const notifier = new SoundNotifier();
     expect(notifier.name).toBe("sound");
   });
 
-  it("writes bell character to stdout", async () => {
-    await notifier.send("test message");
+  it("writes bell character to stdout and returns success", async () => {
+    const notifier = new SoundNotifier();
+    const result = await notifier.send("test message");
+
+    expect(result.channel).toBe("sound");
+    expect(result.success).toBe(true);
+    expect(result.message).toContain("terminal bell");
     expect(writeSpy).toHaveBeenCalledWith("\x07");
   });
 
   it("writes bell character regardless of message content", async () => {
-    await notifier.send("any message at all");
+    const notifier = new SoundNotifier();
+    const result = await notifier.send("any message at all");
+    expect(result.success).toBe(true);
     expect(writeSpy).toHaveBeenCalledWith("\x07");
   });
 
-  it("attempts to play audio file", async () => {
+  it("attempts to play audio file and includes it in result", async () => {
     const mockExec = vi.fn().mockResolvedValue({ stdout: "", stderr: "" });
-    const notifierWithMock = new SoundNotifier(mockExec);
-    await notifierWithMock.send("test");
-    // Should attempt paplay for .oga files
+    const notifier = new SoundNotifier(null, mockExec);
+    const result = await notifier.send("test");
+
+    expect(result.success).toBe(true);
+    expect(result.channel).toBe("sound");
     expect(mockExec).toHaveBeenCalled();
-    const cmd = mockExec.mock.calls[0][0];
-    expect(cmd).toContain("paplay");
+    const [cmd, args] = mockExec.mock.calls[0];
+    expect(cmd).toBe("paplay");
+    expect(args[0]).toContain(".oga");
   });
 });

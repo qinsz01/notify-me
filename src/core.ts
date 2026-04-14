@@ -8,7 +8,7 @@ import { ServerChanNotifier } from "./notifiers/serverchan.js";
 import { SlackNotifier } from "./notifiers/slack.js";
 import { EmailNotifier } from "./notifiers/email.js";
 
-function buildNotifiers(config: Config, env: Environment): Notifier[] {
+function buildNotifiers(config: Config, env: Environment, channel?: string): Notifier[] {
   const notifiers: Notifier[] = [];
   const ch = config.channels;
 
@@ -32,15 +32,20 @@ function buildNotifiers(config: Config, env: Environment): Notifier[] {
   // Local-only notifiers
   if (env === "local") {
     if (ch.desktop.enabled) notifiers.push(new DesktopNotifier());
-    if (ch.sound.enabled) notifiers.push(new SoundNotifier());
+    if (ch.sound.enabled) notifiers.push(new SoundNotifier(ch.sound.file));
   } else {
     // SSH/CI fallback
     for (const name of config.remote.fallback_order) {
-      if (name === "sound" && ch.sound.enabled) notifiers.push(new SoundNotifier());
+      if (name === "sound" && ch.sound.enabled) notifiers.push(new SoundNotifier(ch.sound.file));
       if (name === "ntfy" && ch.ntfy.enabled && ch.ntfy.url) {
         notifiers.push(new NtfyNotifier(ch.ntfy.url));
       }
     }
+  }
+
+  // Filter to specific channel if requested
+  if (channel) {
+    return notifiers.filter((n) => n.name === channel);
   }
 
   return notifiers;
@@ -49,13 +54,18 @@ function buildNotifiers(config: Config, env: Environment): Notifier[] {
 export async function dispatch(
   message: string,
   config: Config,
-  env: Environment
+  env: Environment,
+  options?: { title?: string; channel?: string }
 ): Promise<NotifyResult[]> {
-  const notifiers = buildNotifiers(config, env);
-  const title = config.defaults.title;
+  const notifiers = buildNotifiers(config, env, options?.channel);
+  const title = options?.title ?? config.defaults.title;
 
   if (notifiers.length === 0) {
-    console.log("[notify-me] No channels enabled or configured.");
+    if (options?.channel) {
+      console.log(`[notify-me] Channel '${options.channel}' is not enabled or configured.`);
+    } else {
+      console.log("[notify-me] No channels enabled or configured.");
+    }
     return [];
   }
 
@@ -65,7 +75,6 @@ export async function dispatch(
 
   const results: NotifyResult[] = settled.map((s, i) => {
     if (s.status === "fulfilled") return s.value;
-    // Should not happen since notifiers catch internally, but handle anyway
     return { channel: notifiers[i].name, success: false, message: s.reason?.message ?? String(s.reason) };
   });
 

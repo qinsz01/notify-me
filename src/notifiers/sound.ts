@@ -1,11 +1,12 @@
-import { exec } from "node:child_process";
+import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { existsSync } from "node:fs";
+import { basename } from "node:path";
 import type { Notifier, NotifyOptions, NotifyResult } from "./types.js";
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
-const SOUND_FILES = [
+const DEFAULT_SOUND_FILES = [
   "/usr/share/sounds/freedesktop/stereo/complete.oga",
   "/usr/share/sounds/freedesktop/stereo/bell.oga",
   "/usr/share/sounds/freedesktop/stereo/message.oga",
@@ -13,17 +14,22 @@ const SOUND_FILES = [
 
 export class SoundNotifier implements Notifier {
   name = "sound";
-  private _execAsync: (cmd: string, opts?: { timeout?: number }) => Promise<{ stdout: string; stderr: string }>;
+  private customFile: string | null;
+  private _execFileAsync: (file: string, args: string[], opts?: { timeout?: number }) => Promise<{ stdout: string; stderr: string }>;
 
-  constructor(execFn?: (cmd: string, opts?: { timeout?: number }) => Promise<{ stdout: string; stderr: string }>) {
-    this._execAsync = execFn ?? ((cmd, opts) => execAsync(cmd, opts));
+  constructor(
+    customFile?: string | null,
+    execFn?: (file: string, args: string[], opts?: { timeout?: number }) => Promise<{ stdout: string; stderr: string }>
+  ) {
+    this.customFile = customFile ?? null;
+    this._execFileAsync = execFn ?? ((file, args, opts) => execFileAsync(file, args, opts));
   }
 
   async send(_message: string, _options?: NotifyOptions): Promise<NotifyResult> {
     // 1. Terminal bell — works over SSH if terminal supports it
     process.stdout.write("\x07");
 
-    // 2. Try to play an audio file on the server (audible if on local desktop)
+    // 2. Try to play an audio file
     const audioResult = await this.playSound();
 
     if (audioResult) {
@@ -33,16 +39,18 @@ export class SoundNotifier implements Notifier {
   }
 
   private async playSound(): Promise<string | null> {
-    const soundFile = SOUND_FILES.find((f) => existsSync(f));
+    // Use custom file if configured, otherwise try defaults
+    const candidates = this.customFile ? [this.customFile] : DEFAULT_SOUND_FILES;
+    const soundFile = candidates.find((f) => existsSync(f));
     if (!soundFile) return null;
 
     try {
       if (soundFile.endsWith(".oga")) {
-        await this._execAsync(`paplay "${soundFile}"`, { timeout: 3000 });
+        await this._execFileAsync("paplay", [soundFile], { timeout: 3000 });
       } else {
-        await this._execAsync(`aplay "${soundFile}"`, { timeout: 3000 });
+        await this._execFileAsync("aplay", [soundFile], { timeout: 3000 });
       }
-      return soundFile.split("/").pop() ?? "audio";
+      return basename(soundFile);
     } catch {
       return null;
     }

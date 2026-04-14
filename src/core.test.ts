@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { dispatch } from "./core.js";
 import type { Config } from "./notifiers/types.js";
 
@@ -42,19 +42,21 @@ describe("dispatch", () => {
     logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
   });
 
+  afterEach(() => {
+    writeSpy.mockRestore();
+    logSpy.mockRestore();
+  });
+
   it("sends to desktop + sound in local env and returns results", async () => {
     const results = await dispatch("Hello", baseConfig, "local");
 
     expect(results.length).toBeGreaterThanOrEqual(1);
-    // Sound always fires (writes bell char)
     expect(writeSpy).toHaveBeenCalledWith("\x07");
-    // Should have logged per-channel results
     expect(logSpy).toHaveBeenCalled();
   });
 
   it("skips desktop in ssh env and uses fallback", async () => {
     await dispatch("Hello", baseConfig, "ssh");
-    // Sound (fallback) fires
     expect(writeSpy).toHaveBeenCalledWith("\x07");
   });
 
@@ -90,11 +92,9 @@ describe("dispatch", () => {
       },
     };
 
-    // Should not throw
     const results = await dispatch("Test", config, "local");
     expect(results).toBeDefined();
     expect(writeSpy).toHaveBeenCalledWith("\x07");
-    // Should still have sound result
     const soundResult = results.find((r) => r.channel === "sound");
     expect(soundResult).toBeDefined();
   });
@@ -111,5 +111,45 @@ describe("dispatch", () => {
 
     const results = await dispatch("Test", config, "local");
     expect(results).toEqual([]);
+  });
+
+  it("filters to specific channel when --channel is set", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ ok: true }), { status: 200 })
+    );
+
+    const config: Config = {
+      ...baseConfig,
+      channels: {
+        ...baseConfig.channels,
+        telegram: { enabled: true, bot_token: "tok", chat_id: "123" },
+      },
+    };
+
+    const results = await dispatch("Test", config, "local", { channel: "telegram" });
+    expect(results).toHaveLength(1);
+    expect(results[0].channel).toBe("telegram");
+
+    fetchSpy.mockRestore();
+  });
+
+  it("overrides title when --title is set", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ ok: true }), { status: 200 })
+    );
+
+    const config: Config = {
+      ...baseConfig,
+      channels: {
+        ...baseConfig.channels,
+        telegram: { enabled: true, bot_token: "tok", chat_id: "123" },
+      },
+    };
+
+    await dispatch("Test", config, "local", { title: "Custom Title" });
+    const body = JSON.parse(fetchSpy.mock.calls[0][1]?.body as string);
+    expect(body.text).toContain("Custom Title");
+
+    fetchSpy.mockRestore();
   });
 });

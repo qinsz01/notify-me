@@ -11,7 +11,8 @@ notify-me "<message>"
 
 Examples:
 - `notify-me "Build complete"` — send a simple notification
-- `notify-me --channel telegram "Deploy failed"` — send to specific channel
+- `notify-me --title "CI Pipeline" "All tests passed"` — with a custom title
+- `notify-me --channel telegram "Deploy failed"` — send to specific channel only
 - `notify-me --test` — test all configured channels
 
 The user must have configured channels in `~/.notify-me.yaml` (run `notify-me --init` to create).

@@ -1,15 +1,15 @@
-import { exec } from "node:child_process";
+import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import type { Notifier, NotifyOptions, NotifyResult } from "./types.js";
 
-const defaultExecAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 export class DesktopNotifier implements Notifier {
   name = "desktop";
-  private execAsync: (command: string) => Promise<{ stdout: string; stderr: string }>;
+  private execFileAsync: (file: string, args: string[]) => Promise<{ stdout: string; stderr: string }>;
 
-  constructor(execAsync?: (command: string) => Promise<{ stdout: string; stderr: string }>) {
-    this.execAsync = execAsync ?? defaultExecAsync;
+  constructor(execFileFn?: (file: string, args: string[]) => Promise<{ stdout: string; stderr: string }>) {
+    this.execFileAsync = execFileFn ?? execFileAsync;
   }
 
   async send(message: string, options?: NotifyOptions): Promise<NotifyResult> {
@@ -17,22 +17,19 @@ export class DesktopNotifier implements Notifier {
 
     try {
       if (process.platform === "darwin") {
-        await this.execAsync(
-          `osascript -e 'display notification "${escapeAppleScript(message)}" with title "${escapeAppleScript(title)}"'`
-        );
+        await this.execFileAsync("osascript", [
+          "-e",
+          `display notification "${escapeAppleScript(message)}" with title "${escapeAppleScript(title)}"`,
+        ]);
       } else {
         const urgency = options?.urgency ?? "normal";
-        await this.execAsync(`notify-send -u ${urgency} "${escapeShell(title)}" "${escapeShell(message)}"`);
+        await this.execFileAsync("notify-send", [`-u`, urgency, title, message]);
       }
       return { channel: this.name, success: true, message: "desktop notification sent" };
     } catch (err) {
       return { channel: this.name, success: false, message: err instanceof Error ? err.message : String(err) };
     }
   }
-}
-
-function escapeShell(s: string): string {
-  return s.replace(/"/g, '\\"');
 }
 
 function escapeAppleScript(s: string): string {
