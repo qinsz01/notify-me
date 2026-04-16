@@ -1,6 +1,23 @@
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { loadConfig } from "./config.js";
 import { detectEnvironment } from "./env.js";
 import { dispatch } from "./core.js";
+
+const DEDUP_FILE = path.join(os.tmpdir(), "ai-ding-last-stop");
+const DEDUP_WINDOW_MS = 5000;
+
+function markStop(): void {
+  try { fs.writeFileSync(DEDUP_FILE, String(Date.now())); } catch { /* ignore */ }
+}
+
+function isRecentStop(): boolean {
+  try {
+    const ts = Number(fs.readFileSync(DEDUP_FILE, "utf8"));
+    return Date.now() - ts < DEDUP_WINDOW_MS;
+  } catch { return false; }
+}
 
 export function truncate(s: string, max: number): string {
   if (s.length <= max) return s;
@@ -38,6 +55,7 @@ export async function handleHook(input: string): Promise<void> {
 
   switch (event) {
     case "Stop": {
+      markStop();
       const raw = data.last_assistant_message;
       const lastMsg = truncate(typeof raw === "string" && raw ? raw : "Task completed", 200);
       await dispatch(lastMsg, config, env, { title: "Claude Code" });
@@ -52,7 +70,11 @@ export async function handleHook(input: string): Promise<void> {
     case "Notification": {
       const msg = String(data.message ?? "");
       const notifType = String(data.notification_type ?? "");
-      if (notifType === "idle_prompt" || notifType === "permission_prompt" ||
+      if (notifType === "idle_prompt") {
+        // Skip if Stop just fired — that notification already covered it
+        if (isRecentStop()) break;
+        await dispatch("Claude is waiting for your input", config, env, { title: "Needs Attention" });
+      } else if (notifType === "permission_prompt" ||
           msg.includes("idle") || msg.includes("permission")) {
         await dispatch("Claude is waiting for your input", config, env, { title: "Needs Attention" });
       } else {

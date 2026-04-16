@@ -1161,8 +1161,8 @@ var require_command = __commonJS({
     "use strict";
     var EventEmitter = __require("events").EventEmitter;
     var childProcess = __require("child_process");
-    var path = __require("path");
-    var fs = __require("fs");
+    var path2 = __require("path");
+    var fs2 = __require("fs");
     var process2 = __require("process");
     var { Argument: Argument2, humanReadableArgName } = require_argument();
     var { CommanderError: CommanderError2 } = require_error();
@@ -2143,7 +2143,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
        * @param {string} subcommandName
        */
       _checkForMissingExecutable(executableFile, executableDir, subcommandName) {
-        if (fs.existsSync(executableFile)) return;
+        if (fs2.existsSync(executableFile)) return;
         const executableDirMessage = executableDir ? `searched for local subcommand relative to directory '${executableDir}'` : "no directory for search for local subcommand, use .executableDir() to supply a custom directory";
         const executableMissing = `'${executableFile}' does not exist
  - if '${subcommandName}' is not meant to be an executable command, remove description parameter from '.command()' and use '.description()' instead
@@ -2161,11 +2161,11 @@ Expecting one of '${allowedValues.join("', '")}'`);
         let launchWithNode = false;
         const sourceExt = [".js", ".ts", ".tsx", ".mjs", ".cjs"];
         function findFile(baseDir, baseName) {
-          const localBin = path.resolve(baseDir, baseName);
-          if (fs.existsSync(localBin)) return localBin;
-          if (sourceExt.includes(path.extname(baseName))) return void 0;
+          const localBin = path2.resolve(baseDir, baseName);
+          if (fs2.existsSync(localBin)) return localBin;
+          if (sourceExt.includes(path2.extname(baseName))) return void 0;
           const foundExt = sourceExt.find(
-            (ext) => fs.existsSync(`${localBin}${ext}`)
+            (ext) => fs2.existsSync(`${localBin}${ext}`)
           );
           if (foundExt) return `${localBin}${foundExt}`;
           return void 0;
@@ -2177,21 +2177,21 @@ Expecting one of '${allowedValues.join("', '")}'`);
         if (this._scriptPath) {
           let resolvedScriptPath;
           try {
-            resolvedScriptPath = fs.realpathSync(this._scriptPath);
+            resolvedScriptPath = fs2.realpathSync(this._scriptPath);
           } catch {
             resolvedScriptPath = this._scriptPath;
           }
-          executableDir = path.resolve(
-            path.dirname(resolvedScriptPath),
+          executableDir = path2.resolve(
+            path2.dirname(resolvedScriptPath),
             executableDir
           );
         }
         if (executableDir) {
           let localFile = findFile(executableDir, executableFile);
           if (!localFile && !subcommand._executableFile && this._scriptPath) {
-            const legacyName = path.basename(
+            const legacyName = path2.basename(
               this._scriptPath,
-              path.extname(this._scriptPath)
+              path2.extname(this._scriptPath)
             );
             if (legacyName !== this._name) {
               localFile = findFile(
@@ -2202,7 +2202,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
           }
           executableFile = localFile || executableFile;
         }
-        launchWithNode = sourceExt.includes(path.extname(executableFile));
+        launchWithNode = sourceExt.includes(path2.extname(executableFile));
         let proc;
         if (process2.platform !== "win32") {
           if (launchWithNode) {
@@ -3049,7 +3049,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
        * @return {Command}
        */
       nameFromFilename(filename) {
-        this._name = path.basename(filename, path.extname(filename));
+        this._name = path2.basename(filename, path2.extname(filename));
         return this;
       }
       /**
@@ -3063,9 +3063,9 @@ Expecting one of '${allowedValues.join("', '")}'`);
        * @param {string} [path]
        * @return {(string|null|Command)}
        */
-      executableDir(path2) {
-        if (path2 === void 0) return this._executableDir;
-        this._executableDir = path2;
+      executableDir(path3) {
+        if (path3 === void 0) return this._executableDir;
+        this._executableDir = path3;
         return this;
       }
       /**
@@ -3473,8 +3473,8 @@ var require_cookies = __commonJS({
         if (urlparts.hostname !== cookie.domain && (cookie.domain.charAt(0) !== "." || ("." + urlparts.hostname).substr(-cookie.domain.length) !== cookie.domain)) {
           return false;
         }
-        let path = this.getPath(urlparts.pathname);
-        if (path.substr(0, cookie.path.length) !== cookie.path) {
+        let path2 = this.getPath(urlparts.pathname);
+        if (path2.substr(0, cookie.path.length) !== cookie.path) {
           return false;
         }
         if (cookie.secure && urlparts.protocol !== "https:") {
@@ -3534,16 +3534,16 @@ var require_cookies = __commonJS({
        * @returns {String} Normalized path
        */
       getPath(pathname) {
-        let path = (pathname || "/").split("/");
-        path.pop();
-        path = path.join("/").trim();
-        if (path.charAt(0) !== "/") {
-          path = "/" + path;
+        let path2 = (pathname || "/").split("/");
+        path2.pop();
+        path2 = path2.join("/").trim();
+        if (path2.charAt(0) !== "/") {
+          path2 = "/" + path2;
         }
-        if (path.substr(-1) !== "/") {
-          path += "/";
+        if (path2.substr(-1) !== "/") {
+          path2 += "/";
         }
-        return path;
+        return path2;
       }
     };
     module.exports = Cookies;
@@ -3844,15 +3844,15 @@ var require_shared = __commonJS({
     "use strict";
     var urllib = __require("url");
     var util = __require("util");
-    var fs = __require("fs");
+    var fs2 = __require("fs");
     var nmfetch = require_fetch();
     var dns = __require("dns");
     var net = __require("net");
-    var os = __require("os");
+    var os2 = __require("os");
     var DNS_TTL = 5 * 60 * 1e3;
     var networkInterfaces;
     try {
-      networkInterfaces = os.networkInterfaces();
+      networkInterfaces = os2.networkInterfaces();
     } catch (err) {
     }
     module.exports.networkInterfaces = networkInterfaces;
@@ -4230,7 +4230,7 @@ var require_shared = __commonJS({
           }
           return callback(null, parsedDataUri.data);
         } else if (content.path) {
-          return resolveStream(fs.createReadStream(content.path), callback);
+          return resolveStream(fs2.createReadStream(content.path), callback);
         }
       }
       if (typeof data[key].content === "string" && !["utf8", "usascii", "ascii"].includes(encoding)) {
@@ -4354,7 +4354,7 @@ var require_shared = __commonJS({
 var require_mime_types = __commonJS({
   "node_modules/nodemailer/lib/mime-funcs/mime-types.js"(exports, module) {
     "use strict";
-    var path = __require("path");
+    var path2 = __require("path");
     var defaultMimeType = "application/octet-stream";
     var defaultExtension = "bin";
     var mimeTypes = /* @__PURE__ */ new Map([
@@ -6412,7 +6412,7 @@ var require_mime_types = __commonJS({
         if (!filename) {
           return defaultMimeType;
         }
-        let parsed = path.parse(filename);
+        let parsed = path2.parse(filename);
         let extension = (parsed.ext.substr(1) || parsed.name || "").split("?").shift().trim().toLowerCase();
         let value = defaultMimeType;
         if (extensions.has(extension)) {
@@ -7814,7 +7814,7 @@ var require_mime_node = __commonJS({
   "node_modules/nodemailer/lib/mime-node/index.js"(exports, module) {
     "use strict";
     var crypto = __require("crypto");
-    var fs = __require("fs");
+    var fs2 = __require("fs");
     var punycode = require_punycode();
     var PassThrough = __require("stream").PassThrough;
     var shared = require_shared();
@@ -8529,7 +8529,7 @@ var require_mime_node = __commonJS({
             setImmediate(() => contentStream.emit("error", new Error("File access rejected for " + content.path)));
             return contentStream;
           }
-          return fs.createReadStream(content.path);
+          return fs2.createReadStream(content.path);
         } else if (content && typeof content.href === "string") {
           if (this.disableUrlAccess) {
             contentStream = new PassThrough();
@@ -9550,8 +9550,8 @@ var require_dkim = __commonJS({
     var RelaxedBody = require_relaxed_body();
     var sign = require_sign();
     var PassThrough = __require("stream").PassThrough;
-    var fs = __require("fs");
-    var path = __require("path");
+    var fs2 = __require("fs");
+    var path2 = __require("path");
     var crypto = __require("crypto");
     var DKIM_ALGO = "sha256";
     var MAX_MESSAGE_SIZE = 128 * 1024;
@@ -9565,7 +9565,7 @@ var require_dkim = __commonJS({
         this.chunks = [];
         this.chunklen = 0;
         this.readPos = 0;
-        this.cachePath = this.cacheDir ? path.join(this.cacheDir, "message." + Date.now() + "-" + crypto.randomBytes(14).toString("hex")) : false;
+        this.cachePath = this.cacheDir ? path2.join(this.cacheDir, "message." + Date.now() + "-" + crypto.randomBytes(14).toString("hex")) : false;
         this.cache = false;
         this.headers = false;
         this.bodyHash = false;
@@ -9585,10 +9585,10 @@ var require_dkim = __commonJS({
         if (!this.cache || !this.cachePath) {
           return;
         }
-        fs.unlink(this.cachePath, () => false);
+        fs2.unlink(this.cachePath, () => false);
       }
       createReadCache() {
-        this.cache = fs.createReadStream(this.cachePath);
+        this.cache = fs2.createReadStream(this.cachePath);
         this.cache.once("error", (err) => {
           this.cleanup();
           this.output.emit("error", err);
@@ -9644,7 +9644,7 @@ var require_dkim = __commonJS({
       }
       createWriteCache() {
         this.output.usingCache = true;
-        this.cache = fs.createWriteStream(this.cachePath);
+        this.cache = fs2.createWriteStream(this.cachePath);
         this.cache.once("error", (err) => {
           this.cleanup();
           this.relaxedBody.unpipe(this.cache);
@@ -10571,7 +10571,7 @@ var require_smtp_connection = __commonJS({
     var EventEmitter = __require("events").EventEmitter;
     var net = __require("net");
     var tls = __require("tls");
-    var os = __require("os");
+    var os2 = __require("os");
     var crypto = __require("crypto");
     var DataStream = require_data_stream();
     var PassThrough = __require("stream").PassThrough;
@@ -11964,7 +11964,7 @@ var require_smtp_connection = __commonJS({
       _getHostname() {
         let defaultHostname;
         try {
-          defaultHostname = os.hostname() || "";
+          defaultHostname = os2.hostname() || "";
         } catch (err) {
           defaultHostname = "localhost";
         }
@@ -17233,8 +17233,8 @@ var ENV_VAR_MAP = {
   AI_DING_EMAIL_USER: "channels.email.user",
   AI_DING_EMAIL_PASSWORD: "channels.email.password"
 };
-function setNestedValue(obj, path, value) {
-  const keys = path.split(".");
+function setNestedValue(obj, path2, value) {
+  const keys = path2.split(".");
   let current = obj;
   for (let i = 0; i < keys.length - 1; i++) {
     if (!current[keys[i]]) current[keys[i]] = {};
@@ -17258,10 +17258,10 @@ function loadConfig(configPath) {
       break;
     }
   }
-  for (const [envVar, path] of Object.entries(ENV_VAR_MAP)) {
+  for (const [envVar, path2] of Object.entries(ENV_VAR_MAP)) {
     const value = process.env[envVar];
     if (value) {
-      setNestedValue(merged, path, value);
+      setNestedValue(merged, path2, value);
     }
   }
   return merged;
@@ -17622,6 +17622,25 @@ async function dispatch(message, config, env, options) {
 }
 
 // src/hook.ts
+import fs from "fs";
+import os from "os";
+import path from "path";
+var DEDUP_FILE = path.join(os.tmpdir(), "ai-ding-last-stop");
+var DEDUP_WINDOW_MS = 5e3;
+function markStop() {
+  try {
+    fs.writeFileSync(DEDUP_FILE, String(Date.now()));
+  } catch {
+  }
+}
+function isRecentStop() {
+  try {
+    const ts = Number(fs.readFileSync(DEDUP_FILE, "utf8"));
+    return Date.now() - ts < DEDUP_WINDOW_MS;
+  } catch {
+    return false;
+  }
+}
 function truncate(s, max) {
   if (s.length <= max) return s;
   return s.slice(0, max - 3) + "...";
@@ -17649,6 +17668,7 @@ async function handleHook(input) {
   const env = detectEnvironment();
   switch (event) {
     case "Stop": {
+      markStop();
       const raw = data.last_assistant_message;
       const lastMsg = truncate(typeof raw === "string" && raw ? raw : "Task completed", 200);
       await dispatch(lastMsg, config, env, { title: "Claude Code" });
@@ -17663,7 +17683,10 @@ async function handleHook(input) {
     case "Notification": {
       const msg = String(data.message ?? "");
       const notifType = String(data.notification_type ?? "");
-      if (notifType === "idle_prompt" || notifType === "permission_prompt" || msg.includes("idle") || msg.includes("permission")) {
+      if (notifType === "idle_prompt") {
+        if (isRecentStop()) break;
+        await dispatch("Claude is waiting for your input", config, env, { title: "Needs Attention" });
+      } else if (notifType === "permission_prompt" || msg.includes("idle") || msg.includes("permission")) {
         await dispatch("Claude is waiting for your input", config, env, { title: "Needs Attention" });
       } else {
         await dispatch(truncate(msg || notifType || "Unknown notification", 200), config, env, { title: "Claude Code" });
