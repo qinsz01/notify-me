@@ -1,5 +1,10 @@
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { truncate, extractQuestions, handleHook } from "./hook.js";
+
+const DEDUP_FILE = path.join(os.tmpdir(), "ai-ding-last-stop");
 
 // Mock dispatch so we don't send real notifications
 vi.mock("./core.js", () => ({
@@ -67,6 +72,7 @@ describe("extractQuestions", () => {
 describe("handleHook", () => {
   beforeEach(() => {
     mockDispatch.mockClear();
+    try { fs.unlinkSync(DEDUP_FILE); } catch { /* file may not exist */ }
   });
 
   it("does nothing on empty input", async () => {
