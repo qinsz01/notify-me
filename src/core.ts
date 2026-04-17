@@ -8,7 +8,12 @@ import { ServerChanNotifier } from "./notifiers/serverchan.js";
 import { SlackNotifier } from "./notifiers/slack.js";
 import { EmailNotifier } from "./notifiers/email.js";
 
-function buildNotifiers(config: Config, env: Environment, channel?: string): Notifier[] {
+function buildNotifiers(
+  config: Config,
+  env: Environment,
+  channel?: string,
+  soundStream: NodeJS.WriteStream = process.stdout
+): Notifier[] {
   const notifiers: Notifier[] = [];
   const ch = config.channels;
 
@@ -35,11 +40,11 @@ function buildNotifiers(config: Config, env: Environment, channel?: string): Not
   // Local-only notifiers
   if (env === "local") {
     if (ch.desktop.enabled) notifiers.push(new DesktopNotifier());
-    if (ch.sound.enabled) notifiers.push(new SoundNotifier(ch.sound.file));
+    if (ch.sound.enabled) notifiers.push(new SoundNotifier(ch.sound.file, undefined, soundStream));
   } else {
     // SSH/CI fallback
     for (const name of config.remote.fallback_order) {
-      if (name === "sound" && ch.sound.enabled) notifiers.push(new SoundNotifier(ch.sound.file));
+      if (name === "sound" && ch.sound.enabled) notifiers.push(new SoundNotifier(ch.sound.file, undefined, soundStream));
     }
   }
 
@@ -55,12 +60,16 @@ export async function dispatch(
   message: string,
   config: Config,
   env: Environment,
-  options?: { title?: string; channel?: string }
+  options?: { title?: string; channel?: string; silent?: boolean; hookSafe?: boolean }
 ): Promise<NotifyResult[]> {
-  const notifiers = buildNotifiers(config, env, options?.channel);
+  const soundStream = options?.hookSafe ? process.stderr : process.stdout;
+  const notifiers = buildNotifiers(config, env, options?.channel, soundStream);
   const title = options?.title ?? config.defaults.title;
 
   if (notifiers.length === 0) {
+    if (options?.silent) {
+      return [];
+    }
     if (options?.channel) {
       console.log(`[ai-ding] Channel '${options.channel}' is not enabled or configured.`);
     } else {
@@ -79,14 +88,16 @@ export async function dispatch(
   });
 
   // Print per-channel results
-  for (const r of results) {
-    const icon = r.success ? "✓" : "✗";
-    console.log(`[ai-ding] ${icon} ${r.channel}: ${r.message}`);
-  }
+  if (!options?.silent) {
+    for (const r of results) {
+      const icon = r.success ? "✓" : "✗";
+      console.log(`[ai-ding] ${icon} ${r.channel}: ${r.message}`);
+    }
 
-  const ok = results.filter((r) => r.success).length;
-  const fail = results.filter((r) => !r.success).length;
-  console.log(`[ai-ding] Done: ${ok} sent${fail > 0 ? `, ${fail} failed` : ""}.`);
+    const ok = results.filter((r) => r.success).length;
+    const fail = results.filter((r) => !r.success).length;
+    console.log(`[ai-ding] Done: ${ok} sent${fail > 0 ? `, ${fail} failed` : ""}.`);
+  }
 
   return results;
 }

@@ -8,7 +8,7 @@
       "name": "ai-ding",
       "source": "./",
       "description": "Cross-platform notifications for Claude Code and Codex CLI — desktop, sound, Telegram, Bark, Slack, email, and more. Works over SSH.",
-      "version": "1.0.0"
+      "version": "1.1.0"
     }
   ]
 }

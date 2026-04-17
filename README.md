@@ -68,9 +68,48 @@ ai-ding --init    # Create ~/.ai-ding.yaml
 ai-ding --test    # Test all enabled channels
 ```
 
-### As a Codex CLI plugin
+### As a Codex plugin
 
-Add the marketplace to `~/.agents/plugins/marketplace.json` or your repo's `.agents/plugins/marketplace.json`, then install via `/plugins`.
+ai-ding now supports Codex in both repo-local and personal-install setups.
+
+#### Repo-local setup
+
+If you cloned this repository, it already includes the required Codex files:
+
+- `.agents/plugins/marketplace.json` to expose the plugin in the workspace marketplace
+- `.codex/hooks.json` to send Stop-event notifications from the repo's `dist/cli.js`
+
+Open the repo in Codex, enable hooks in `~/.codex/config.toml` if needed:
+
+```toml
+[features]
+codex_hooks = true
+```
+
+Then restart Codex and install `ai-ding` from `/plugins` if you want the `notify` skill in chat. Repo-level Stop notifications work through `.codex/hooks.json`.
+
+#### Personal install
+
+If you installed `ai-ding` globally with npm, run:
+
+```bash
+ai-ding --install-codex
+```
+
+This will:
+
+- copy the plugin source to `~/.codex/plugins/ai-ding`
+- update `~/.agents/plugins/marketplace.json`
+- write `~/.codex/hooks.json`
+- enable `features.codex_hooks = true` in `~/.codex/config.toml`
+
+Restart Codex afterward. Automatic Stop notifications will work immediately; install `ai-ding` from `/plugins` if you also want the `notify` skill inside Codex chat.
+
+To remove the personal setup:
+
+```bash
+ai-ding --uninstall-codex
+```
 
 ## Usage
 
@@ -92,6 +131,12 @@ ai-ding --test
 
 # Initialize config file
 ai-ding --init
+
+# Install personal Codex integration
+ai-ding --install-codex
+
+# Remove personal Codex integration
+ai-ding --uninstall-codex
 ```
 
 ### Output
@@ -115,6 +160,8 @@ If a channel fails, it shows the error:
 
 ### Smart Notifications (Plugin Mode)
 
+#### Claude Code
+
 When installed as a Claude Code plugin, ai-ding sends contextual notifications:
 
 | When | Notification |
@@ -128,6 +175,17 @@ When installed as a Claude Code plugin, ai-ding sends contextual notifications:
 | Other notifications (errors, etc.) | Forwards the notification message |
 
 Subagent activity (Explore, code-reviewer, etc.) is **not** notified — only main agent actions that require your attention.
+
+#### Codex
+
+In Codex, ai-ding uses the official `Stop` hook and sends the last assistant message at the end of each turn. That means:
+
+- completed-task summaries are notified automatically
+- questions are still surfaced, because the final assistant message is forwarded
+- repo-local hooks work from this repository's `.codex/hooks.json`
+- personal installs work through `ai-ding --install-codex`
+
+Codex does **not** currently expose the same hook events Claude Code does for plan approval, permission prompts, or separate notification categories, so those extra Claude-only notifications are not available in Codex.
 
 ## Configuration
 

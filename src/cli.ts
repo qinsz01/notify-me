@@ -1,17 +1,19 @@
 import { Command } from "commander";
 import { resolve } from "node:path";
 import { writeFileSync, existsSync, readFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { loadConfig } from "./config.js";
 import { detectEnvironment } from "./env.js";
 import { dispatch } from "./core.js";
 import { handleHook } from "./hook.js";
+import { installCodex, uninstallCodex } from "./codex.js";
 
 const program = new Command();
 
 program
   .name("ai-ding")
   .description("Cross-platform notifications for AI coding assistants")
-  .version("1.0.0")
+  .version("1.1.0")
   .argument("[message]", "notification message", "Task completed")
   .option("-t, --title <title>", "notification title")
   .option("-c, --channel <channel>", "send to specific channel only")
@@ -20,15 +22,42 @@ program
   .option("--init", "create default config file")
   .option("--test", "test all enabled notification channels")
   .option("--hook", "read hook event from stdin and send contextual notification")
+  .option("--source <source>", "hook source for --hook")
+  .option("--install-codex", "install ai-ding as a personal Codex plugin")
+  .option("--uninstall-codex", "remove the personal Codex install created by ai-ding")
   .action(async (message: string, opts: Record<string, unknown>) => {
     if (opts.init) {
       initConfig();
       return;
     }
 
+    if (opts.installCodex) {
+      installCodex({
+        homeDir: process.env.HOME || homedir(),
+        packageRoot: resolve(import.meta.dirname ?? ".", ".."),
+      });
+      console.log("[ai-ding] Installed personal Codex plugin files.");
+      console.log("[ai-ding] Updated ~/.agents/plugins/marketplace.json.");
+      console.log("[ai-ding] Updated ~/.codex/hooks.json and enabled features.codex_hooks.");
+      console.log("[ai-ding] Restart Codex to pick up the new plugin and hooks.");
+      return;
+    }
+
+    if (opts.uninstallCodex) {
+      uninstallCodex({
+        homeDir: process.env.HOME || homedir(),
+      });
+      console.log("[ai-ding] Removed personal Codex plugin files, marketplace entry, and hook.");
+      return;
+    }
+
     if (opts.hook) {
       const input = await readStdin();
-      await handleHook(input);
+      const source = opts.source === "codex" || opts.source === "claude" ? opts.source : "auto";
+      await handleHook(input, source);
+      if (source === "codex") {
+        process.stdout.write("{}\n");
+      }
       return;
     }
 

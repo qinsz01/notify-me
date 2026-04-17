@@ -68,9 +68,48 @@ ai-ding --init    # 创建 ~/.ai-ding.yaml
 ai-ding --test    # 测试所有已启用的通知渠道
 ```
 
-### 作为 Codex CLI 插件
+### 作为 Codex 插件
 
-将 marketplace 添加到 `~/.agents/plugins/marketplace.json` 或项目仓库的 `.agents/plugins/marketplace.json`，然后通过 `/plugins` 安装。
+ai-ding 现在同时支持仓库级和个人级两种 Codex 安装方式。
+
+#### 仓库级安装
+
+如果你直接 clone 了这个仓库，仓库里已经包含 Codex 所需文件：
+
+- `.agents/plugins/marketplace.json`：把插件暴露到当前工作区的 marketplace
+- `.codex/hooks.json`：通过仓库里的 `dist/cli.js` 发送 Stop 事件通知
+
+如果你的 `~/.codex/config.toml` 还没开启 hooks，需要加上：
+
+```toml
+[features]
+codex_hooks = true
+```
+
+然后重启 Codex。若你希望在聊天里直接使用 `notify` skill，再通过 `/plugins` 安装 `ai-ding`。仓库级 Stop 通知则通过 `.codex/hooks.json` 直接生效。
+
+#### 个人级安装
+
+如果你是通过 npm 全局安装的 `ai-ding`，执行：
+
+```bash
+ai-ding --install-codex
+```
+
+这个命令会：
+
+- 把插件源码复制到 `~/.codex/plugins/ai-ding`
+- 更新 `~/.agents/plugins/marketplace.json`
+- 写入 `~/.codex/hooks.json`
+- 在 `~/.codex/config.toml` 中启用 `features.codex_hooks = true`
+
+执行后重启 Codex。自动 Stop 通知会立刻可用；如果你还想在 Codex 聊天里使用 `notify` skill，再通过 `/plugins` 安装 `ai-ding`。
+
+如需移除个人级安装：
+
+```bash
+ai-ding --uninstall-codex
+```
 
 ## 使用方法
 
@@ -92,6 +131,12 @@ ai-ding --test
 
 # 初始化配置文件
 ai-ding --init
+
+# 安装个人级 Codex 集成
+ai-ding --install-codex
+
+# 卸载个人级 Codex 集成
+ai-ding --uninstall-codex
 ```
 
 ### 输出反馈
@@ -115,6 +160,8 @@ ai-ding --init
 
 ### 智能通知（插件模式）
 
+#### Claude Code
+
 作为 Claude Code 插件安装后，ai-ding 会发送上下文感知的通知：
 
 | 触发时机 | 通知内容 |
@@ -128,6 +175,17 @@ ai-ding --init
 | 其他通知（错误等） | 转发通知消息 |
 
 Subagent 活动（Explore、code-reviewer 等）**不会触发通知** —— 只在你需要操作时才提醒。
+
+#### Codex
+
+在 Codex 中，ai-ding 使用官方支持的 `Stop` hook，并在每轮结束时转发最后一条 assistant 消息。这意味着：
+
+- 任务完成摘要会自动通知
+- 如果最后一条消息是在提问，问题内容也会被通知出来
+- 直接 clone 本仓库时，可用仓库内的 `.codex/hooks.json`
+- 全局安装后，可通过 `ai-ding --install-codex` 完成个人级接入
+
+Codex 目前**没有**像 Claude Code 那样暴露计划审批、权限请求、分类通知等额外 hook 事件，所以这些 Claude 专属的上下文通知在 Codex 中暂时无法完全等价实现。
 
 ## 配置
 

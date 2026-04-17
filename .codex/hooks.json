@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$(git rev-parse --show-toplevel)/dist/cli.js\" --hook --source codex",
+            "timeout": 30,
+            "statusMessage": "Sending ai-ding notification"
+          }
+        ]
+      }
+    ]
+  }
+}

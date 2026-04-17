@@ -1,6 +1,6 @@
 {
   "name": "ai-ding",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Cross-platform notifications for Claude Code and Codex CLI",
   "type": "module",
   "repository": {
@@ -60,11 +60,14 @@
     "dist",
     "hooks",
     "skills",
+    ".agents",
+    ".codex",
     ".claude-plugin",
     ".codex-plugin",
     "default-config.yaml",
     "CHANGELOG.md",
     "README.md",
+    "README.zh.md",
     "LICENSE"
   ],
   "license": "MIT"

@@ -1,11 +1,30 @@
 {
   "name": "ai-ding",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Cross-platform notifications for Claude Code — desktop, sound, Telegram, Bark, Slack, email, and more. Works over SSH with progressive fallback.",
   "author": {
-    "name": "ai-ding contributors"
+    "name": "qinsz01",
+    "url": "https://github.com/qinsz01"
   },
   "license": "MIT",
   "keywords": ["notification", "alert", "telegram", "slack", "bark", "sound", "email", "ssh"],
-  "skills": "./skills/"
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "ai-ding",
+    "shortDescription": "Send attention-grabbing notifications from Claude Code",
+    "longDescription": "ai-ding adds desktop, sound, and remote-friendly notifications to Claude Code, with contextual hook handling for completed turns, questions, plan approval, permission prompts, and API errors.",
+    "developerName": "qinsz01",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/qinsz01/ai-ding",
+    "brandColor": "#D97706",
+    "defaultPrompt": [
+      "Install ai-ding so I stop missing Claude notifications.",
+      "Use notify to tell me when this task is finished.",
+      "Test all configured ai-ding channels."
+    ],
+    "screenshots": []
+  }
 }

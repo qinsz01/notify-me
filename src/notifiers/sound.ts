@@ -16,18 +16,21 @@ export class SoundNotifier implements Notifier {
   name = "sound";
   private customFile: string | null;
   private _execFileAsync: (file: string, args: string[], opts?: { timeout?: number }) => Promise<{ stdout: string; stderr: string }>;
+  private outputStream: NodeJS.WriteStream;
 
   constructor(
     customFile?: string | null,
-    execFn?: (file: string, args: string[], opts?: { timeout?: number }) => Promise<{ stdout: string; stderr: string }>
+    execFn?: (file: string, args: string[], opts?: { timeout?: number }) => Promise<{ stdout: string; stderr: string }>,
+    outputStream: NodeJS.WriteStream = process.stdout
   ) {
     this.customFile = customFile ?? null;
     this._execFileAsync = execFn ?? ((file, args, opts) => execFileAsync(file, args, opts));
+    this.outputStream = outputStream;
   }
 
   async send(_message: string, _options?: NotifyOptions): Promise<NotifyResult> {
     // 1. Terminal bell — works over SSH if terminal supports it
-    process.stdout.write("\x07");
+    this.outputStream.write("\x07");
 
     // 2. Try to play an audio file
     const audioResult = await this.playSound();

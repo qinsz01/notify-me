@@ -108,6 +108,21 @@ describe("handleHook", () => {
     expect(mockDispatch).toHaveBeenCalledWith("Task completed", expect.anything(), expect.anything(), { title: "Claude Code" });
   });
 
+  it("handles Codex Stop events when source is codex", async () => {
+    await handleHook(JSON.stringify({
+      hook_event_name: "Stop",
+      session_id: "session-1",
+      turn_id: "turn-1",
+      last_assistant_message: "Need your approval to continue?",
+    }), "codex");
+    expect(mockDispatch).toHaveBeenCalledWith(
+      "Need your approval to continue?",
+      expect.anything(),
+      expect.anything(),
+      { title: "Codex", silent: true, hookSafe: true }
+    );
+  });
+
   it("handles Notification idle_prompt", async () => {
     await handleHook(JSON.stringify({
       hook_event_name: "Notification",

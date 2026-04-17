@@ -1,11 +1,32 @@
 {
   "name": "ai-ding",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Cross-platform notifications for Codex CLI — desktop, sound, Telegram, Bark, Slack, email, and more.",
   "author": {
-    "name": "ai-ding contributors"
+    "name": "qinsz01",
+    "url": "https://github.com/qinsz01"
   },
+  "homepage": "https://github.com/qinsz01/ai-ding",
+  "repository": "https://github.com/qinsz01/ai-ding",
   "license": "MIT",
   "keywords": ["notification", "alert", "telegram", "slack", "bark", "sound", "email", "ssh"],
-  "skills": "./skills/"
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "ai-ding",
+    "shortDescription": "Send attention-grabbing notifications from Codex",
+    "longDescription": "ai-ding adds cross-platform notifications to Codex with a notify skill, repo-level hooks, and a personal install flow that wires marketplace discovery plus Stop-event alerts.",
+    "developerName": "qinsz01",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/qinsz01/ai-ding",
+    "brandColor": "#D97706",
+    "defaultPrompt": [
+      "Use notify to alert me when this task completes.",
+      "Send a notification that the build finished.",
+      "Install ai-ding for Codex on this machine."
+    ],
+    "screenshots": []
+  }
 }

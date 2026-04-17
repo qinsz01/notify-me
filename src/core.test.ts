@@ -35,15 +35,18 @@ const baseConfig: Config = {
 
 describe("dispatch", () => {
   let writeSpy: ReturnType<typeof vi.spyOn>;
+  let stderrWriteSpy: ReturnType<typeof vi.spyOn>;
   let logSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     writeSpy = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+    stderrWriteSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
     logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
   });
 
   afterEach(() => {
     writeSpy.mockRestore();
+    stderrWriteSpy.mockRestore();
     logSpy.mockRestore();
   });
 
@@ -151,5 +154,22 @@ describe("dispatch", () => {
     expect(body.text).toContain("Custom Title");
 
     fetchSpy.mockRestore();
+  });
+
+  it("suppresses stdout logs and uses stderr bell in hook-safe mode", async () => {
+    const config: Config = {
+      ...baseConfig,
+      channels: {
+        ...baseConfig.channels,
+        desktop: { enabled: false },
+      },
+    };
+
+    const results = await dispatch("Test", config, "local", { silent: true, hookSafe: true });
+
+    expect(results).toHaveLength(1);
+    expect(writeSpy).not.toHaveBeenCalled();
+    expect(stderrWriteSpy).toHaveBeenCalledWith("\x07");
+    expect(logSpy).not.toHaveBeenCalled();
   });
 });

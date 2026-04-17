@@ -3,10 +3,18 @@ name: notify
 description: Send a notification to the user via configured channels (desktop, sound, Telegram, Bark, Slack, ntfy, ServerChan, email). Use when a long task completes or when you need the user's attention.
 ---
 
-Send a notification to the user by running the CLI tool:
+Send a notification to the user by running the CLI tool.
+
+Preferred command when `ai-ding` is on `PATH`:
 
 ```bash
 ai-ding "<message>"
+```
+
+If you're working inside the `ai-ding` repository itself and `ai-ding` is not on `PATH`, use the bundled CLI instead:
+
+```bash
+node dist/cli.js "<message>"
 ```
 
 **Important:** Always include a concise summary of what was accomplished or what needs attention in the message. Do not use generic messages like "Task completed" or "Done".

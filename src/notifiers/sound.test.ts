@@ -48,4 +48,14 @@ describe("SoundNotifier", () => {
     expect(cmd).toBe("paplay");
     expect(args[0]).toContain(".oga");
   });
+
+  it("can write the bell character to a custom stream", async () => {
+    const customStream = { write: vi.fn().mockReturnValue(true) } as unknown as NodeJS.WriteStream;
+    const notifier = new SoundNotifier(null, mockExec, customStream);
+
+    await notifier.send("test");
+
+    expect(customStream.write).toHaveBeenCalledWith("\x07");
+    expect(writeSpy).not.toHaveBeenCalled();
+  });
 });

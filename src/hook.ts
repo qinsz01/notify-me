@@ -7,6 +7,7 @@ import { dispatch } from "./core.js";
 
 const DEDUP_FILE = path.join(os.tmpdir(), "ai-ding-last-stop");
 const DEDUP_WINDOW_MS = 5000;
+type HookSource = "auto" | "claude" | "codex";
 
 function markStop(): void {
   try { fs.writeFileSync(DEDUP_FILE, String(Date.now())); } catch { /* ignore */ }
@@ -35,7 +36,24 @@ export function extractQuestions(toolInput: unknown): string {
   return texts.length > 0 ? truncate(texts.join("; "), 200) : "Claude has a question";
 }
 
-export async function handleHook(input: string): Promise<void> {
+function inferHookSource(data: Record<string, unknown>): Exclude<HookSource, "auto"> {
+  const event = data.hook_event_name as string | undefined;
+  if (event === "Notification" || event === "StopFailure" || event === "PermissionRequest") {
+    return "claude";
+  }
+  if (event === "SessionStart" || event === "PostToolUse" || event === "UserPromptSubmit") {
+    return "codex";
+  }
+  if (event === "Stop") {
+    if ("session_id" in data || "turn_id" in data || "stop_hook_active" in data) {
+      return "codex";
+    }
+    return "claude";
+  }
+  return "claude";
+}
+
+export async function handleHook(input: string, source: HookSource = "auto"): Promise<void> {
   if (!input) return;
 
   let data: Record<string, unknown>;
@@ -50,8 +68,18 @@ export async function handleHook(input: string): Promise<void> {
   if (data.agent_id) return;
 
   const event = data.hook_event_name as string | undefined;
+  const resolvedSource = source === "auto" ? inferHookSource(data) : source;
   const config = loadConfig();
   const env = detectEnvironment();
+
+  if (resolvedSource === "codex") {
+    if (event === "Stop") {
+      const raw = data.last_assistant_message;
+      const lastMsg = truncate(typeof raw === "string" && raw ? raw : "Task completed", 200);
+      await dispatch(lastMsg, config, env, { title: "Codex", silent: true, hookSafe: true });
+    }
+    return;
+  }
 
   switch (event) {
     case "Stop": {

@@ -14551,7 +14551,8 @@ var {
 
 // src/cli.ts
 import { resolve as resolve2 } from "path";
-import { writeFileSync, existsSync as existsSync3, readFileSync as readFileSync2 } from "fs";
+import { writeFileSync as writeFileSync2, existsSync as existsSync4, readFileSync as readFileSync3 } from "fs";
+import { homedir } from "os";
 
 // src/config.ts
 import { readFileSync, existsSync } from "fs";
@@ -17322,12 +17323,14 @@ var SoundNotifier = class {
   name = "sound";
   customFile;
   _execFileAsync;
-  constructor(customFile, execFn) {
+  outputStream;
+  constructor(customFile, execFn, outputStream = process.stdout) {
     this.customFile = customFile ?? null;
     this._execFileAsync = execFn ?? ((file, args, opts) => execFileAsync2(file, args, opts));
+    this.outputStream = outputStream;
   }
   async send(_message, _options) {
-    process.stdout.write("\x07");
+    this.outputStream.write("\x07");
     const audioResult = await this.playSound();
     if (audioResult) {
       return { channel: this.name, success: true, message: `terminal bell + audio (${audioResult})` };
@@ -17559,7 +17562,7 @@ var EmailNotifier = class {
 };
 
 // src/core.ts
-function buildNotifiers(config, env, channel) {
+function buildNotifiers(config, env, channel, soundStream = process.stdout) {
   const notifiers = [];
   const ch = config.channels;
   if (ch.ntfy.enabled && ch.ntfy.url) {
@@ -17582,10 +17585,10 @@ function buildNotifiers(config, env, channel) {
   }
   if (env === "local") {
     if (ch.desktop.enabled) notifiers.push(new DesktopNotifier());
-    if (ch.sound.enabled) notifiers.push(new SoundNotifier(ch.sound.file));
+    if (ch.sound.enabled) notifiers.push(new SoundNotifier(ch.sound.file, void 0, soundStream));
   } else {
     for (const name of config.remote.fallback_order) {
-      if (name === "sound" && ch.sound.enabled) notifiers.push(new SoundNotifier(ch.sound.file));
+      if (name === "sound" && ch.sound.enabled) notifiers.push(new SoundNotifier(ch.sound.file, void 0, soundStream));
     }
   }
   if (channel) {
@@ -17594,9 +17597,13 @@ function buildNotifiers(config, env, channel) {
   return notifiers;
 }
 async function dispatch(message, config, env, options) {
-  const notifiers = buildNotifiers(config, env, options?.channel);
+  const soundStream = options?.hookSafe ? process.stderr : process.stdout;
+  const notifiers = buildNotifiers(config, env, options?.channel, soundStream);
   const title = options?.title ?? config.defaults.title;
   if (notifiers.length === 0) {
+    if (options?.silent) {
+      return [];
+    }
     if (options?.channel) {
       console.log(`[ai-ding] Channel '${options.channel}' is not enabled or configured.`);
     } else {
@@ -17611,13 +17618,15 @@ async function dispatch(message, config, env, options) {
     if (s.status === "fulfilled") return s.value;
     return { channel: notifiers[i].name, success: false, message: s.reason?.message ?? String(s.reason) };
   });
-  for (const r of results) {
-    const icon = r.success ? "\u2713" : "\u2717";
-    console.log(`[ai-ding] ${icon} ${r.channel}: ${r.message}`);
+  if (!options?.silent) {
+    for (const r of results) {
+      const icon = r.success ? "\u2713" : "\u2717";
+      console.log(`[ai-ding] ${icon} ${r.channel}: ${r.message}`);
+    }
+    const ok = results.filter((r) => r.success).length;
+    const fail = results.filter((r) => !r.success).length;
+    console.log(`[ai-ding] Done: ${ok} sent${fail > 0 ? `, ${fail} failed` : ""}.`);
   }
-  const ok = results.filter((r) => r.success).length;
-  const fail = results.filter((r) => !r.success).length;
-  console.log(`[ai-ding] Done: ${ok} sent${fail > 0 ? `, ${fail} failed` : ""}.`);
   return results;
 }
 
@@ -17653,7 +17662,23 @@ function extractQuestions(toolInput) {
   const texts = questions.map((q) => String(q.question ?? "")).filter(Boolean);
   return texts.length > 0 ? truncate(texts.join("; "), 200) : "Claude has a question";
 }
-async function handleHook(input) {
+function inferHookSource(data) {
+  const event = data.hook_event_name;
+  if (event === "Notification" || event === "StopFailure" || event === "PermissionRequest") {
+    return "claude";
+  }
+  if (event === "SessionStart" || event === "PostToolUse" || event === "UserPromptSubmit") {
+    return "codex";
+  }
+  if (event === "Stop") {
+    if ("session_id" in data || "turn_id" in data || "stop_hook_active" in data) {
+      return "codex";
+    }
+    return "claude";
+  }
+  return "claude";
+}
+async function handleHook(input, source = "auto") {
   if (!input) return;
   let data;
   try {
@@ -17664,8 +17689,17 @@ async function handleHook(input) {
   }
   if (data.agent_id) return;
   const event = data.hook_event_name;
+  const resolvedSource = source === "auto" ? inferHookSource(data) : source;
   const config = loadConfig();
   const env = detectEnvironment();
+  if (resolvedSource === "codex") {
+    if (event === "Stop") {
+      const raw = data.last_assistant_message;
+      const lastMsg = truncate(typeof raw === "string" && raw ? raw : "Task completed", 200);
+      await dispatch(lastMsg, config, env, { title: "Codex", silent: true, hookSafe: true });
+    }
+    return;
+  }
   switch (event) {
     case "Stop": {
       markStop();
@@ -17711,16 +17745,213 @@ async function handleHook(input) {
   }
 }
 
+// src/codex.ts
+import { cpSync, existsSync as existsSync3, mkdirSync, readFileSync as readFileSync2, rmSync, writeFileSync } from "fs";
+import { dirname, join } from "path";
+var PLUGIN_NAME = "ai-ding";
+var MARKETPLACE_RELATIVE_PATH = `./.codex/plugins/${PLUGIN_NAME}`;
+var CODEx_PLUGIN_COMMAND = `node "$HOME/.codex/plugins/${PLUGIN_NAME}/dist/cli.js" --hook --source codex`;
+var COPY_PATHS = [
+  ".codex-plugin",
+  "dist",
+  "skills",
+  "default-config.yaml",
+  "README.md",
+  "README.zh.md",
+  "LICENSE",
+  "CHANGELOG.md",
+  "package.json"
+];
+function readJsonFile(path2, fallback) {
+  if (!existsSync3(path2)) return fallback;
+  return JSON.parse(readFileSync2(path2, "utf-8"));
+}
+function writeJsonFile(path2, value) {
+  mkdirSync(dirname(path2), { recursive: true });
+  writeFileSync(path2, `${JSON.stringify(value, null, 2)}
+`, "utf-8");
+}
+function createMarketplaceEntry() {
+  return {
+    name: PLUGIN_NAME,
+    source: {
+      source: "local",
+      path: MARKETPLACE_RELATIVE_PATH
+    },
+    policy: {
+      installation: "AVAILABLE",
+      authentication: "ON_INSTALL"
+    },
+    category: "Productivity"
+  };
+}
+function createStopHookHandler(command = CODEx_PLUGIN_COMMAND) {
+  return {
+    type: "command",
+    command,
+    timeout: 30,
+    statusMessage: "Sending ai-ding notification"
+  };
+}
+function enableCodexHooksFeature(configToml) {
+  const lines = configToml.length > 0 ? configToml.replace(/\n+$/, "").split(/\r?\n/) : [];
+  const output = [];
+  let insideFeatures = false;
+  let sawFeatures = false;
+  let wroteFlag = false;
+  for (const line of lines) {
+    const isSection = /^\[.*\]\s*$/.test(line);
+    if (/^\[features\]\s*$/.test(line)) {
+      sawFeatures = true;
+      insideFeatures = true;
+      output.push(line);
+      continue;
+    }
+    if (insideFeatures && isSection) {
+      if (!wroteFlag) {
+        output.push("codex_hooks = true");
+        wroteFlag = true;
+      }
+      insideFeatures = false;
+    }
+    if (insideFeatures && /^\s*codex_hooks\s*=/.test(line)) {
+      output.push("codex_hooks = true");
+      wroteFlag = true;
+      continue;
+    }
+    output.push(line);
+  }
+  if (insideFeatures && !wroteFlag) {
+    output.push("codex_hooks = true");
+    wroteFlag = true;
+  }
+  if (!sawFeatures) {
+    if (output.length > 0 && output[output.length - 1] !== "") {
+      output.push("");
+    }
+    output.push("[features]");
+    output.push("codex_hooks = true");
+  }
+  return `${output.join("\n").replace(/\n+$/, "")}
+`;
+}
+function upsertMarketplace(path2) {
+  const marketplace = readJsonFile(path2, {
+    name: "local-plugins",
+    interface: { displayName: "Local Plugins" },
+    plugins: []
+  });
+  const entry = createMarketplaceEntry();
+  const existingIndex = marketplace.plugins.findIndex((plugin) => plugin.name === PLUGIN_NAME);
+  if (existingIndex >= 0) {
+    marketplace.plugins[existingIndex] = entry;
+  } else {
+    marketplace.plugins.push(entry);
+  }
+  if (!marketplace.interface) {
+    marketplace.interface = { displayName: "Local Plugins" };
+  }
+  writeJsonFile(path2, marketplace);
+}
+function upsertHooks(path2, command = CODEx_PLUGIN_COMMAND) {
+  const hooksFile = readJsonFile(path2, { hooks: {} });
+  const stopGroups = hooksFile.hooks.Stop ?? [];
+  const alreadyPresent = stopGroups.some(
+    (group) => group.hooks.some((hook) => hook.command === command)
+  );
+  if (!alreadyPresent) {
+    stopGroups.push({ hooks: [createStopHookHandler(command)] });
+  }
+  hooksFile.hooks.Stop = stopGroups;
+  writeJsonFile(path2, hooksFile);
+}
+function removeMarketplaceEntry(path2) {
+  if (!existsSync3(path2)) return;
+  const marketplace = readJsonFile(path2, {
+    name: "local-plugins",
+    plugins: []
+  });
+  marketplace.plugins = marketplace.plugins.filter((plugin) => plugin.name !== PLUGIN_NAME);
+  writeJsonFile(path2, marketplace);
+}
+function removeStopHook(path2, command = CODEx_PLUGIN_COMMAND) {
+  if (!existsSync3(path2)) return;
+  const hooksFile = readJsonFile(path2, { hooks: {} });
+  const stopGroups = (hooksFile.hooks.Stop ?? []).map((group) => ({
+    ...group,
+    hooks: group.hooks.filter((hook) => hook.command !== command)
+  })).filter((group) => group.hooks.length > 0);
+  if (stopGroups.length > 0) {
+    hooksFile.hooks.Stop = stopGroups;
+  } else {
+    delete hooksFile.hooks.Stop;
+  }
+  writeJsonFile(path2, hooksFile);
+}
+function copyPluginSource(packageRoot, targetRoot) {
+  rmSync(targetRoot, { recursive: true, force: true });
+  mkdirSync(targetRoot, { recursive: true });
+  for (const relativePath of COPY_PATHS) {
+    const sourcePath = join(packageRoot, relativePath);
+    if (!existsSync3(sourcePath)) continue;
+    cpSync(sourcePath, join(targetRoot, relativePath), { recursive: true });
+  }
+}
+function installCodex(options) {
+  const { homeDir, packageRoot } = options;
+  const pluginRoot = join(homeDir, ".codex", "plugins", PLUGIN_NAME);
+  const marketplacePath = join(homeDir, ".agents", "plugins", "marketplace.json");
+  const hooksPath = join(homeDir, ".codex", "hooks.json");
+  const configPath = join(homeDir, ".codex", "config.toml");
+  copyPluginSource(packageRoot, pluginRoot);
+  upsertMarketplace(marketplacePath);
+  upsertHooks(hooksPath);
+  const currentConfig = existsSync3(configPath) ? readFileSync2(configPath, "utf-8") : "";
+  mkdirSync(dirname(configPath), { recursive: true });
+  writeFileSync(configPath, enableCodexHooksFeature(currentConfig), "utf-8");
+}
+function uninstallCodex(options) {
+  const { homeDir } = options;
+  const pluginRoot = join(homeDir, ".codex", "plugins", PLUGIN_NAME);
+  const marketplacePath = join(homeDir, ".agents", "plugins", "marketplace.json");
+  const hooksPath = join(homeDir, ".codex", "hooks.json");
+  removeMarketplaceEntry(marketplacePath);
+  removeStopHook(hooksPath);
+  rmSync(pluginRoot, { recursive: true, force: true });
+}
+
 // src/cli.ts
 var program2 = new Command();
-program2.name("ai-ding").description("Cross-platform notifications for AI coding assistants").version("1.0.0").argument("[message]", "notification message", "Task completed").option("-t, --title <title>", "notification title").option("-c, --channel <channel>", "send to specific channel only").option("--no-desktop", "disable desktop notification").option("--no-sound", "disable sound notification").option("--init", "create default config file").option("--test", "test all enabled notification channels").option("--hook", "read hook event from stdin and send contextual notification").action(async (message, opts) => {
+program2.name("ai-ding").description("Cross-platform notifications for AI coding assistants").version("1.1.0").argument("[message]", "notification message", "Task completed").option("-t, --title <title>", "notification title").option("-c, --channel <channel>", "send to specific channel only").option("--no-desktop", "disable desktop notification").option("--no-sound", "disable sound notification").option("--init", "create default config file").option("--test", "test all enabled notification channels").option("--hook", "read hook event from stdin and send contextual notification").option("--source <source>", "hook source for --hook").option("--install-codex", "install ai-ding as a personal Codex plugin").option("--uninstall-codex", "remove the personal Codex install created by ai-ding").action(async (message, opts) => {
   if (opts.init) {
     initConfig();
     return;
   }
+  if (opts.installCodex) {
+    installCodex({
+      homeDir: process.env.HOME || homedir(),
+      packageRoot: resolve2(import.meta.dirname ?? ".", "..")
+    });
+    console.log("[ai-ding] Installed personal Codex plugin files.");
+    console.log("[ai-ding] Updated ~/.agents/plugins/marketplace.json.");
+    console.log("[ai-ding] Updated ~/.codex/hooks.json and enabled features.codex_hooks.");
+    console.log("[ai-ding] Restart Codex to pick up the new plugin and hooks.");
+    return;
+  }
+  if (opts.uninstallCodex) {
+    uninstallCodex({
+      homeDir: process.env.HOME || homedir()
+    });
+    console.log("[ai-ding] Removed personal Codex plugin files, marketplace entry, and hook.");
+    return;
+  }
   if (opts.hook) {
     const input = await readStdin();
-    await handleHook(input);
+    const source = opts.source === "codex" || opts.source === "claude" ? opts.source : "auto";
+    await handleHook(input, source);
+    if (source === "codex") {
+      process.stdout.write("{}\n");
+    }
     return;
   }
   const config = loadConfig();
@@ -17770,7 +18001,7 @@ function readStdin() {
 }
 function initConfig() {
   const dest = resolve2(process.env.HOME || "~", ".ai-ding.yaml");
-  if (existsSync3(dest)) {
+  if (existsSync4(dest)) {
     console.log(`Config already exists at ${dest}`);
     return;
   }
@@ -17780,8 +18011,8 @@ function initConfig() {
   ];
   let content = "";
   for (const p of possiblePaths) {
-    if (existsSync3(p)) {
-      content = readFileSync2(p, "utf-8");
+    if (existsSync4(p)) {
+      content = readFileSync3(p, "utf-8");
       break;
     }
   }
@@ -17828,7 +18059,7 @@ defaults:
   title: "ai-ding"
 `;
   }
-  writeFileSync(dest, content, "utf-8");
+  writeFileSync2(dest, content, "utf-8");
   console.log(`Config created at ${dest}`);
 }
 program2.parse();
