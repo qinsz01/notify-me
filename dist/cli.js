@@ -17634,7 +17634,9 @@ async function dispatch(message, config, env, options) {
 import fs from "fs";
 import os from "os";
 import path from "path";
+import { createHash } from "crypto";
 var DEDUP_FILE = path.join(os.tmpdir(), "ai-ding-last-stop");
+var CODEX_DEDUP_DIR = path.join(os.tmpdir(), "ai-ding-codex-stop");
 var DEDUP_WINDOW_MS = 5e3;
 function markStop() {
   try {
@@ -17648,6 +17650,35 @@ function isRecentStop() {
     return Date.now() - ts < DEDUP_WINDOW_MS;
   } catch {
     return false;
+  }
+}
+function buildCodexStopKey(data) {
+  const sessionId = typeof data.session_id === "string" ? data.session_id : "";
+  const turnId = typeof data.turn_id === "string" ? data.turn_id : "";
+  if (!sessionId || !turnId) return null;
+  return `${sessionId}:${turnId}`;
+}
+function getCodexStopMarkerPath(key) {
+  const hash = createHash("sha1").update(key).digest("hex");
+  return path.join(CODEX_DEDUP_DIR, hash);
+}
+function shouldSkipCodexStop(key) {
+  const markerPath = getCodexStopMarkerPath(key);
+  try {
+    const stats = fs.statSync(markerPath);
+    if (Date.now() - stats.mtimeMs < DEDUP_WINDOW_MS) {
+      return true;
+    }
+    fs.rmSync(markerPath, { force: true });
+  } catch {
+  }
+  try {
+    fs.mkdirSync(CODEX_DEDUP_DIR, { recursive: true });
+    const fd = fs.openSync(markerPath, "wx");
+    fs.closeSync(fd);
+    return false;
+  } catch (error) {
+    return error instanceof Error && "code" in error && error.code === "EEXIST";
   }
 }
 function truncate(s, max) {
@@ -17694,6 +17725,8 @@ async function handleHook(input, source = "auto") {
   const env = detectEnvironment();
   if (resolvedSource === "codex") {
     if (event === "Stop") {
+      const codexStopKey = buildCodexStopKey(data);
+      if (codexStopKey && shouldSkipCodexStop(codexStopKey)) return;
       const raw = data.last_assistant_message;
       const lastMsg = truncate(typeof raw === "string" && raw ? raw : "Task completed", 200);
       await dispatch(lastMsg, config, env, { title: "Codex", silent: true, hookSafe: true });
@@ -17921,7 +17954,7 @@ function uninstallCodex(options) {
 
 // src/cli.ts
 var program2 = new Command();
-program2.name("ai-ding").description("Cross-platform notifications for AI coding assistants").version("1.1.0").argument("[message]", "notification message", "Task completed").option("-t, --title <title>", "notification title").option("-c, --channel <channel>", "send to specific channel only").option("--no-desktop", "disable desktop notification").option("--no-sound", "disable sound notification").option("--init", "create default config file").option("--test", "test all enabled notification channels").option("--hook", "read hook event from stdin and send contextual notification").option("--source <source>", "hook source for --hook").option("--install-codex", "install ai-ding as a personal Codex plugin").option("--uninstall-codex", "remove the personal Codex install created by ai-ding").action(async (message, opts) => {
+program2.name("ai-ding").description("Cross-platform notifications for AI coding assistants").version("1.1.1").argument("[message]", "notification message", "Task completed").option("-t, --title <title>", "notification title").option("-c, --channel <channel>", "send to specific channel only").option("--no-desktop", "disable desktop notification").option("--no-sound", "disable sound notification").option("--init", "create default config file").option("--test", "test all enabled notification channels").option("--hook", "read hook event from stdin and send contextual notification").option("--source <source>", "hook source for --hook").option("--install-codex", "install ai-ding as a personal Codex plugin").option("--uninstall-codex", "remove the personal Codex install created by ai-ding").action(async (message, opts) => {
   if (opts.init) {
     initConfig();
     return;

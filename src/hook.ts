@@ -1,11 +1,13 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { createHash } from "node:crypto";
 import { loadConfig } from "./config.js";
 import { detectEnvironment } from "./env.js";
 import { dispatch } from "./core.js";
 
 const DEDUP_FILE = path.join(os.tmpdir(), "ai-ding-last-stop");
+const CODEX_DEDUP_DIR = path.join(os.tmpdir(), "ai-ding-codex-stop");
 const DEDUP_WINDOW_MS = 5000;
 type HookSource = "auto" | "claude" | "codex";
 
@@ -18,6 +20,41 @@ function isRecentStop(): boolean {
     const ts = Number(fs.readFileSync(DEDUP_FILE, "utf8"));
     return Date.now() - ts < DEDUP_WINDOW_MS;
   } catch { return false; }
+}
+
+function buildCodexStopKey(data: Record<string, unknown>): string | null {
+  const sessionId = typeof data.session_id === "string" ? data.session_id : "";
+  const turnId = typeof data.turn_id === "string" ? data.turn_id : "";
+  if (!sessionId || !turnId) return null;
+  return `${sessionId}:${turnId}`;
+}
+
+function getCodexStopMarkerPath(key: string): string {
+  const hash = createHash("sha1").update(key).digest("hex");
+  return path.join(CODEX_DEDUP_DIR, hash);
+}
+
+function shouldSkipCodexStop(key: string): boolean {
+  const markerPath = getCodexStopMarkerPath(key);
+
+  try {
+    const stats = fs.statSync(markerPath);
+    if (Date.now() - stats.mtimeMs < DEDUP_WINDOW_MS) {
+      return true;
+    }
+    fs.rmSync(markerPath, { force: true });
+  } catch {
+    // marker absent or unreadable; continue and attempt to claim this event
+  }
+
+  try {
+    fs.mkdirSync(CODEX_DEDUP_DIR, { recursive: true });
+    const fd = fs.openSync(markerPath, "wx");
+    fs.closeSync(fd);
+    return false;
+  } catch (error) {
+    return error instanceof Error && "code" in error && error.code === "EEXIST";
+  }
 }
 
 export function truncate(s: string, max: number): string {
@@ -74,6 +111,8 @@ export async function handleHook(input: string, source: HookSource = "auto"): Pr
 
   if (resolvedSource === "codex") {
     if (event === "Stop") {
+      const codexStopKey = buildCodexStopKey(data);
+      if (codexStopKey && shouldSkipCodexStop(codexStopKey)) return;
       const raw = data.last_assistant_message;
       const lastMsg = truncate(typeof raw === "string" && raw ? raw : "Task completed", 200);
       await dispatch(lastMsg, config, env, { title: "Codex", silent: true, hookSafe: true });

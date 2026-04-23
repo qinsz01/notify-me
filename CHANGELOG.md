@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.1] - 2026-04-23
+
+### Fixed
+- Deduplicated Codex `Stop` notifications when repo-local and personal hook installs both receive the same turn event
+
 ## [1.1.0] - 2026-04-17
 
 ### Added

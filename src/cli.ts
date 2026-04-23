@@ -13,7 +13,7 @@ const program = new Command();
 program
   .name("ai-ding")
   .description("Cross-platform notifications for AI coding assistants")
-  .version("1.1.0")
+  .version("1.1.1")
   .argument("[message]", "notification message", "Task completed")
   .option("-t, --title <title>", "notification title")
   .option("-c, --channel <channel>", "send to specific channel only")

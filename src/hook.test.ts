@@ -5,6 +5,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { truncate, extractQuestions, handleHook } from "./hook.js";
 
 const DEDUP_FILE = path.join(os.tmpdir(), "ai-ding-last-stop");
+const CODEX_DEDUP_DIR = path.join(os.tmpdir(), "ai-ding-codex-stop");
 
 // Mock dispatch so we don't send real notifications
 vi.mock("./core.js", () => ({
@@ -73,6 +74,7 @@ describe("handleHook", () => {
   beforeEach(() => {
     mockDispatch.mockClear();
     try { fs.unlinkSync(DEDUP_FILE); } catch { /* file may not exist */ }
+    try { fs.rmSync(CODEX_DEDUP_DIR, { recursive: true, force: true }); } catch { /* dir may not exist */ }
   });
 
   it("does nothing on empty input", async () => {
@@ -117,6 +119,26 @@ describe("handleHook", () => {
     }), "codex");
     expect(mockDispatch).toHaveBeenCalledWith(
       "Need your approval to continue?",
+      expect.anything(),
+      expect.anything(),
+      { title: "Codex", silent: true, hookSafe: true }
+    );
+  });
+
+  it("deduplicates duplicate Codex Stop events for the same turn", async () => {
+    const payload = JSON.stringify({
+      hook_event_name: "Stop",
+      session_id: "session-1",
+      turn_id: "turn-42",
+      last_assistant_message: "Build finished successfully",
+    });
+
+    await handleHook(payload, "codex");
+    await handleHook(payload, "codex");
+
+    expect(mockDispatch).toHaveBeenCalledTimes(1);
+    expect(mockDispatch).toHaveBeenCalledWith(
+      "Build finished successfully",
       expect.anything(),
       expect.anything(),
       { title: "Codex", silent: true, hookSafe: true }
