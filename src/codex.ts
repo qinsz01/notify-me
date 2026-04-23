@@ -123,7 +123,6 @@ export function enableCodexHooksFeature(configToml: string): string {
 
   if (insideFeatures && !wroteFlag) {
     output.push("codex_hooks = true");
-    wroteFlag = true;
   }
 
   if (!sawFeatures) {
