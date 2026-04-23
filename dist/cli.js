@@ -17823,7 +17823,6 @@ function enableCodexHooksFeature(configToml) {
   }
   if (insideFeatures && !wroteFlag) {
     output.push("codex_hooks = true");
-    wroteFlag = true;
   }
   if (!sawFeatures) {
     if (output.length > 0 && output[output.length - 1] !== "") {
